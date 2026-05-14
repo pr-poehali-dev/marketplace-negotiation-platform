@@ -12,10 +12,12 @@ export default function Header({ currentPage, onNavigate, cartCount }: HeaderPro
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { key: 'home', label: 'Главная' },
-    { key: 'catalog', label: 'Каталог' },
-    { key: 'chat', label: 'Сообщения' },
-    { key: 'profile', label: 'Кабинет' },
+    { key: 'home', label: 'Главная', emoji: '🏠' },
+    { key: 'catalog', label: 'Каталог', emoji: '🛍️' },
+    { key: 'stores', label: 'Магазины', emoji: '🏪' },
+    { key: 'bonuses', label: 'Бонусы', emoji: '🎁' },
+    { key: 'chat', label: 'Сообщения', emoji: '💬' },
+    { key: 'profile', label: 'Кабинет', emoji: '👤' },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -26,18 +28,20 @@ export default function Header({ currentPage, onNavigate, cartCount }: HeaderPro
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-border">
+    <header className="sticky top-0 z-50 bg-white border-b-2 border-primary/20 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 gap-4">
           {/* Logo */}
           <button
             onClick={() => onNavigate('home')}
-            className="flex-shrink-0 flex items-center gap-2 font-bold text-xl tracking-tight"
+            className="flex-shrink-0 flex items-center gap-2 font-bold text-xl"
           >
-            <span className="w-7 h-7 bg-foreground rounded-md flex items-center justify-center">
-              <span className="text-background text-xs font-bold">М</span>
+            <span className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-md shadow-primary/30">
+              <span className="text-white text-sm font-black">О'</span>
             </span>
-            <span className="hidden sm:block">Маркет</span>
+            <span className="hidden sm:block font-black tracking-tight">
+              О'<span className="text-primary">kak</span>
+            </span>
           </button>
 
           {/* Search */}
@@ -49,20 +53,20 @@ export default function Header({ currentPage, onNavigate, cartCount }: HeaderPro
                 value={searchValue}
                 onChange={e => setSearchValue(e.target.value)}
                 placeholder="Найти товар, продавца..."
-                className="w-full pl-9 pr-4 py-2 text-sm bg-secondary border-0 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
+                className="w-full pl-9 pr-4 py-2 text-sm bg-secondary border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary placeholder:text-muted-foreground"
               />
             </div>
           </form>
 
           {/* Nav desktop */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-0.5">
             {navItems.map(item => (
               <button
                 key={item.key}
                 onClick={() => onNavigate(item.key)}
-                className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                className={`px-3 py-2 text-sm rounded-xl transition-all font-medium ${
                   currentPage === item.key
-                    ? 'bg-secondary font-medium'
+                    ? 'bg-primary text-white shadow-sm shadow-primary/30'
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                 }`}
               >
@@ -75,17 +79,17 @@ export default function Header({ currentPage, onNavigate, cartCount }: HeaderPro
           <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigate('cart')}
-              className="relative p-2 rounded-lg hover:bg-secondary transition-colors"
+              className="relative p-2 rounded-xl hover:bg-secondary transition-colors"
             >
               <Icon name="ShoppingBag" size={20} />
               {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-foreground text-background text-xs rounded-full flex items-center justify-center font-medium">
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-white text-xs rounded-full flex items-center justify-center font-bold shadow-sm">
                   {cartCount}
                 </span>
               )}
             </button>
             <button
-              className="md:hidden p-2 rounded-lg hover:bg-secondary transition-colors"
+              className="lg:hidden p-2 rounded-xl hover:bg-secondary transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             >
               <Icon name={mobileMenuOpen ? 'X' : 'Menu'} size={20} />
@@ -95,15 +99,16 @@ export default function Header({ currentPage, onNavigate, cartCount }: HeaderPro
 
         {/* Mobile nav */}
         {mobileMenuOpen && (
-          <div className="md:hidden pb-3 border-t border-border mt-0 pt-3 animate-fade-in">
+          <div className="lg:hidden pb-3 border-t border-border mt-0 pt-3 animate-fade-in grid grid-cols-3 gap-1">
             {navItems.map(item => (
               <button
                 key={item.key}
                 onClick={() => { onNavigate(item.key); setMobileMenuOpen(false); }}
-                className={`block w-full text-left px-3 py-2.5 text-sm rounded-lg transition-colors mb-1 ${
-                  currentPage === item.key ? 'bg-secondary font-medium' : 'text-muted-foreground'
+                className={`flex flex-col items-center gap-1 px-2 py-2.5 text-xs rounded-xl transition-colors ${
+                  currentPage === item.key ? 'bg-primary text-white font-semibold' : 'text-muted-foreground hover:bg-secondary'
                 }`}
               >
+                <span>{item.emoji}</span>
                 {item.label}
               </button>
             ))}

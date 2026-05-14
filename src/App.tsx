@@ -12,6 +12,8 @@ import CartPage from '@/pages/CartPage';
 import ChatPage from '@/pages/ChatPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SupportPage from '@/pages/SupportPage';
+import StoresPage from '@/pages/StoresPage';
+import BonusesPage from '@/pages/BonusesPage';
 import { Product } from '@/data/products';
 
 interface CartItem extends Product {
@@ -86,6 +88,8 @@ export default function App() {
         return (
           <ChatPage
             initialSellerId={params.sellerId ? Number(params.sellerId) : undefined}
+            offerPrice={params.offerPrice}
+            productName={params.productName}
             onNavigate={navigate}
           />
         );
@@ -93,6 +97,10 @@ export default function App() {
         return <ProfilePage onNavigate={navigate} />;
       case 'support':
         return <SupportPage onNavigate={navigate} />;
+      case 'stores':
+        return <StoresPage onNavigate={navigate} />;
+      case 'bonuses':
+        return <BonusesPage onNavigate={navigate} />;
       default:
         return <HomePage onNavigate={navigate} onAddToCart={addToCart} />;
     }
