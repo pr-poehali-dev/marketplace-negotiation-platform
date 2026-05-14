@@ -64,8 +64,10 @@ export default function ProductPage({ productId, onNavigate, onAddToCart }: Prod
 
         {/* Info */}
         <div className="flex flex-col">
-          <div className="flex items-start gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">{product.category}</span>
+            <span className="text-xs font-mono bg-secondary text-muted-foreground px-2.5 py-1 rounded-full">Арт: {product.article}</span>
+            <span className="text-xs font-mono bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full">{product.sellerCode}</span>
             {!product.inStock && (
               <span className="text-xs font-semibold text-destructive bg-destructive/10 px-2.5 py-1 rounded-full">Нет в наличии</span>
             )}

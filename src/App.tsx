@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { AuthProvider } from '@/context/AuthContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import HomePage from '@/pages/HomePage';
@@ -14,7 +15,11 @@ import ProfilePage from '@/pages/ProfilePage';
 import SupportPage from '@/pages/SupportPage';
 import StoresPage from '@/pages/StoresPage';
 import BonusesPage from '@/pages/BonusesPage';
+import AuthPage from '@/pages/AuthPage';
+import SellerRegisterPage from '@/pages/SellerRegisterPage';
+import ModeratorPage from '@/pages/ModeratorPage';
 import { Product } from '@/data/products';
+import { UserRole } from '@/data/auth';
 
 interface CartItem extends Product {
   quantity: number;
@@ -25,9 +30,10 @@ interface NavState {
   params: Record<string, string>;
 }
 
-export default function App() {
+function AppInner() {
   const [nav, setNav] = useState<NavState>({ page: 'home', params: {} });
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [showAuth, setShowAuth] = useState(false);
 
   const navigate = (page: string, params: Record<string, string> = {}) => {
     setNav({ page, params });
@@ -45,6 +51,15 @@ export default function App() {
   };
 
   const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+
+  const handleAuthSuccess = (role: UserRole) => {
+    setShowAuth(false);
+    if (role === 'moderator') {
+      navigate('moderator');
+    } else {
+      navigate('profile');
+    }
+  };
 
   const renderPage = () => {
     const { page, params } = nav;
@@ -94,29 +109,46 @@ export default function App() {
           />
         );
       case 'profile':
-        return <ProfilePage onNavigate={navigate} />;
+        return <ProfilePage onNavigate={navigate} onShowAuth={() => setShowAuth(true)} />;
       case 'support':
         return <SupportPage onNavigate={navigate} />;
       case 'stores':
         return <StoresPage onNavigate={navigate} />;
       case 'bonuses':
         return <BonusesPage onNavigate={navigate} />;
+      case 'seller-register':
+        return <SellerRegisterPage onNavigate={navigate} />;
+      case 'moderator':
+        return <ModeratorPage onNavigate={navigate} />;
       default:
         return <HomePage onNavigate={navigate} onAddToCart={addToCart} />;
     }
   };
 
   return (
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
+    <>
       <div className="min-h-screen bg-background flex flex-col">
-        <Header currentPage={nav.page} onNavigate={navigate} cartCount={cartCount} />
+        <Header currentPage={nav.page} onNavigate={navigate} cartCount={cartCount} onShowAuth={() => setShowAuth(true)} />
         <div className="flex-1">
           {renderPage()}
         </div>
         <Footer onNavigate={navigate} />
       </div>
-    </TooltipProvider>
+      {showAuth && (
+        <AuthPage onSuccess={handleAuthSuccess} onClose={() => setShowAuth(false)} />
+      )}
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AppInner />
+      </TooltipProvider>
+    </AuthProvider>
   );
 }

@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/icon';
+import { useAuth } from '@/context/AuthContext';
 
 interface HeaderProps {
   currentPage: string;
   onNavigate: (page: string, params?: Record<string, string>) => void;
   cartCount: number;
+  onShowAuth: () => void;
 }
 
-export default function Header({ currentPage, onNavigate, cartCount }: HeaderProps) {
+export default function Header({ currentPage, onNavigate, cartCount, onShowAuth }: HeaderProps) {
+  const { user } = useAuth();
   const [searchValue, setSearchValue] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -75,7 +78,7 @@ export default function Header({ currentPage, onNavigate, cartCount }: HeaderPro
             ))}
           </nav>
 
-          {/* Cart + mobile menu */}
+          {/* Cart + auth + mobile menu */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigate('cart')}
@@ -88,6 +91,25 @@ export default function Header({ currentPage, onNavigate, cartCount }: HeaderPro
                 </span>
               )}
             </button>
+            {user ? (
+              <button
+                onClick={() => onNavigate('profile')}
+                className="hidden lg:flex items-center gap-2 pl-2 pr-3 py-1.5 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors"
+              >
+                <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center text-xs font-black">
+                  {user.avatar}
+                </div>
+                <span className="text-sm font-bold max-w-[80px] truncate">{user.name.split(' ')[0]}</span>
+              </button>
+            ) : (
+              <button
+                onClick={onShowAuth}
+                className="hidden lg:flex items-center gap-1.5 px-3 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-sm"
+              >
+                <Icon name="LogIn" size={14} />
+                Войти
+              </button>
+            )}
             <button
               className="lg:hidden p-2 rounded-xl hover:bg-secondary transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
