@@ -229,13 +229,22 @@ export default function AuthPage({ onSuccess, onClose }: AuthPageProps) {
           </form>
         )}
 
-        {/* Hint для модератора */}
+        {/* Hint */}
         {mode === 'login' && step === 'phone' && (
           <div className="mt-4 p-3 bg-secondary rounded-xl text-xs text-muted-foreground">
-            <p className="font-semibold mb-1">Тестовые аккаунты:</p>
-            <p>Покупатель: <span className="font-bold">+7 900 000-00-01</span></p>
-            <p>Продавец: <span className="font-bold">+7 900 000-00-02</span></p>
-            <p>Модератор: <span className="font-bold">+7 900 000-00-99</span></p>
+            <p className="font-semibold mb-2">Тестовые аккаунты:</p>
+            <div className="space-y-1.5">
+              <button type="button" onClick={() => setPhone('+7 900 000-00-01')} className="w-full text-left px-2 py-1.5 bg-white rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-between">
+                <span>🛍️ Покупатель</span><span className="font-bold text-primary">+7 900 000-00-01</span>
+              </button>
+              <button type="button" onClick={() => setPhone('+7 900 000-00-02')} className="w-full text-left px-2 py-1.5 bg-white rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-between">
+                <span>🏪 Продавец</span><span className="font-bold text-primary">+7 900 000-00-02</span>
+              </button>
+              <button type="button" onClick={() => setPhone('+7 900 000-00-99')} className="w-full text-left px-2 py-1.5 bg-white rounded-lg hover:bg-red-50 transition-colors flex items-center justify-between">
+                <span>🛡️ Модератор</span><span className="font-bold text-red-600">+7 900 000-00-99</span>
+              </button>
+            </div>
+            <p className="mt-2 text-center opacity-70">Нажми на нужный аккаунт → код любой</p>
           </div>
         )}
       </div>

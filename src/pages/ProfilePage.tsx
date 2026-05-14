@@ -88,10 +88,10 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
           <div className="flex gap-2 flex-shrink-0">
             {user.role === 'moderator' && (
               <button
-                onClick={() => onNavigate('moderator')}
-                className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-colors flex items-center gap-2"
+                onClick={() => onNavigate('admin')}
+                className="px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-bold hover:bg-red-600 transition-colors flex items-center gap-2 shadow-md shadow-red-500/30"
               >
-                <Icon name="Shield" size={14} /> Панель модератора
+                <Icon name="LayoutDashboard" size={14} /> Панель управления
               </button>
             )}
           </div>

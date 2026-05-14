@@ -18,6 +18,7 @@ import BonusesPage from '@/pages/BonusesPage';
 import AuthPage from '@/pages/AuthPage';
 import SellerRegisterPage from '@/pages/SellerRegisterPage';
 import ModeratorPage from '@/pages/ModeratorPage';
+import AdminPage from '@/pages/AdminPage';
 import { Product } from '@/data/products';
 import { UserRole } from '@/data/auth';
 
@@ -55,7 +56,7 @@ function AppInner() {
   const handleAuthSuccess = (role: UserRole) => {
     setShowAuth(false);
     if (role === 'moderator') {
-      navigate('moderator');
+      navigate('admin');
     } else {
       navigate('profile');
     }
@@ -120,20 +121,28 @@ function AppInner() {
         return <SellerRegisterPage onNavigate={navigate} />;
       case 'moderator':
         return <ModeratorPage onNavigate={navigate} />;
+      case 'admin':
+        return <AdminPage onNavigate={navigate} />;
       default:
         return <HomePage onNavigate={navigate} onAddToCart={addToCart} />;
     }
   };
 
+  const isAdmin = nav.page === 'admin';
+
   return (
     <>
-      <div className="min-h-screen bg-background flex flex-col">
-        <Header currentPage={nav.page} onNavigate={navigate} cartCount={cartCount} onShowAuth={() => setShowAuth(true)} />
-        <div className="flex-1">
-          {renderPage()}
+      {isAdmin ? (
+        renderPage()
+      ) : (
+        <div className="min-h-screen bg-background flex flex-col">
+          <Header currentPage={nav.page} onNavigate={navigate} cartCount={cartCount} onShowAuth={() => setShowAuth(true)} />
+          <div className="flex-1">
+            {renderPage()}
+          </div>
+          <Footer onNavigate={navigate} />
         </div>
-        <Footer onNavigate={navigate} />
-      </div>
+      )}
       {showAuth && (
         <AuthPage onSuccess={handleAuthSuccess} onClose={() => setShowAuth(false)} />
       )}
