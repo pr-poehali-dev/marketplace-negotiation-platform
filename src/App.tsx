@@ -1,28 +1,114 @@
+import { useState } from 'react';
+import { Toaster } from '@/components/ui/toaster';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import HomePage from '@/pages/HomePage';
+import CatalogPage from '@/pages/CatalogPage';
+import ProductPage from '@/pages/ProductPage';
+import SellerPage from '@/pages/SellerPage';
+import CartPage from '@/pages/CartPage';
+import ChatPage from '@/pages/ChatPage';
+import ProfilePage from '@/pages/ProfilePage';
+import SupportPage from '@/pages/SupportPage';
+import { Product } from '@/data/products';
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
+interface CartItem extends Product {
+  quantity: number;
+}
 
-const queryClient = new QueryClient();
+interface NavState {
+  page: string;
+  params: Record<string, string>;
+}
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+export default function App() {
+  const [nav, setNav] = useState<NavState>({ page: 'home', params: {} });
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  const navigate = (page: string, params: Record<string, string> = {}) => {
+    setNav({ page, params });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const addToCart = (product: Product) => {
+    setCartItems(prev => {
+      const exists = prev.find(i => i.id === product.id);
+      if (exists) {
+        return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, { ...product, quantity: 1 }];
+    });
+  };
+
+  const cartCount = cartItems.reduce((sum, i) => sum + i.quantity, 0);
+
+  const renderPage = () => {
+    const { page, params } = nav;
+    switch (page) {
+      case 'home':
+        return <HomePage onNavigate={navigate} onAddToCart={addToCart} />;
+      case 'catalog':
+        return (
+          <CatalogPage
+            onNavigate={navigate}
+            onAddToCart={addToCart}
+            initialCategory={params.category || 'Все'}
+            initialSearch={params.search || ''}
+          />
+        );
+      case 'product':
+        return (
+          <ProductPage
+            productId={Number(params.id) || 1}
+            onNavigate={navigate}
+            onAddToCart={addToCart}
+          />
+        );
+      case 'seller':
+        return (
+          <SellerPage
+            sellerId={Number(params.id) || 1}
+            onNavigate={navigate}
+            onAddToCart={addToCart}
+          />
+        );
+      case 'cart':
+        return (
+          <CartPage
+            cartItems={cartItems}
+            onUpdateCart={setCartItems}
+            onNavigate={navigate}
+          />
+        );
+      case 'chat':
+        return (
+          <ChatPage
+            initialSellerId={params.sellerId ? Number(params.sellerId) : undefined}
+            onNavigate={navigate}
+          />
+        );
+      case 'profile':
+        return <ProfilePage onNavigate={navigate} />;
+      case 'support':
+        return <SupportPage onNavigate={navigate} />;
+      default:
+        return <HomePage onNavigate={navigate} onAddToCart={addToCart} />;
+    }
+  };
+
+  return (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <div className="min-h-screen bg-background flex flex-col">
+        <Header currentPage={nav.page} onNavigate={navigate} cartCount={cartCount} />
+        <div className="flex-1">
+          {renderPage()}
+        </div>
+        <Footer onNavigate={navigate} />
+      </div>
     </TooltipProvider>
-  </QueryClientProvider>
-);
-
-export default App;
+  );
+}
