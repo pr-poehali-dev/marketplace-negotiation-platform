@@ -15,15 +15,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Единственный номер с доступом модератора
+  const MODERATOR_PHONE = '79248985212';
+
   const login = async (phone: string, _otp: string): Promise<{ success: boolean; role?: UserRole }> => {
     setIsLoading(true);
     await new Promise(r => setTimeout(r, 800));
 
-    // Мок: проверяем по номеру телефона
-    const normalized = phone.replace(/\s/g, '');
-    const found = MOCK_USERS.find(u => u.phone.replace(/\s/g, '') === normalized);
+    // Нормализуем: убираем всё кроме цифр
+    const normalized = phone.replace(/\D/g, '');
+
+    // Если пытается войти как модератор, но номер не совпадает — отказ
+    const found = MOCK_USERS.find(u => u.phone.replace(/\D/g, '') === normalized);
 
     if (found) {
+      // Дополнительная защита: роль модератора только для конкретного номера
+      if (found.role === 'moderator' && normalized !== MODERATOR_PHONE) {
+        setIsLoading(false);
+        return { success: false };
+      }
       setUser(found);
       setIsLoading(false);
       return { success: true, role: found.role };

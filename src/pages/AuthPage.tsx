@@ -240,9 +240,6 @@ export default function AuthPage({ onSuccess, onClose }: AuthPageProps) {
               <button type="button" onClick={() => setPhone('+7 900 000-00-02')} className="w-full text-left px-2 py-1.5 bg-white rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-between">
                 <span>🏪 Продавец</span><span className="font-bold text-primary">+7 900 000-00-02</span>
               </button>
-              <button type="button" onClick={() => setPhone('+7 900 000-00-99')} className="w-full text-left px-2 py-1.5 bg-white rounded-lg hover:bg-red-50 transition-colors flex items-center justify-between">
-                <span>🛡️ Модератор</span><span className="font-bold text-red-600">+7 900 000-00-99</span>
-              </button>
             </div>
             <p className="mt-2 text-center opacity-70">Нажми на нужный аккаунт → код любой</p>
           </div>

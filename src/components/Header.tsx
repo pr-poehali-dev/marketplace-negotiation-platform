@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/icon';
 import { useAuth } from '@/context/AuthContext';
+import NotificationBell from '@/components/NotificationBell';
 
 interface HeaderProps {
   currentPage: string;
@@ -80,6 +81,7 @@ export default function Header({ currentPage, onNavigate, cartCount, onShowAuth 
 
           {/* Cart + auth + mobile menu */}
           <div className="flex items-center gap-2">
+            <NotificationBell onNavigateAdmin={() => onNavigate('admin')} />
             <button
               onClick={() => onNavigate('cart')}
               className="relative p-2 rounded-xl hover:bg-secondary transition-colors"

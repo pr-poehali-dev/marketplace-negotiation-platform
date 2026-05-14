@@ -84,7 +84,7 @@ export const MOCK_USERS: User[] = [
   { id: 'u5', phone: '+7 985 777-99-00', name: 'Дмитрий Орлов', role: 'buyer', status: 'blocked', buyerCode: 'BUY-9900', avatar: 'ДО', bonusPoints: 0, createdAt: '2025-06-20', ordersCount: 2, totalSpent: 8800 },
   { id: 'u6', phone: '+7 903 100-22-33', name: 'Анна Морозова', role: 'buyer', status: 'active', buyerCode: 'BUY-2255', avatar: 'АМ', bonusPoints: 420, createdAt: '2025-08-11', ordersCount: 6, totalSpent: 31000 },
   { id: 'u7', phone: '+7 916 444-66-77', name: 'Сергей Белов', role: 'seller', status: 'active', buyerCode: 'BUY-5544', avatar: 'СБ', bonusPoints: 2300, createdAt: '2024-09-01', ordersCount: 0, totalSpent: 0 },
-  { id: 'mod1', phone: '+7 900 000-00-99', name: 'Модератор Алексей', role: 'moderator', status: 'active', buyerCode: 'MOD-0001', avatar: 'МА', bonusPoints: 0, createdAt: '2024-01-01', ordersCount: 0, totalSpent: 0 },
+  { id: 'mod1', phone: '+79248985212', name: 'Модератор', role: 'moderator', status: 'active', buyerCode: 'MOD-0001', avatar: 'МД', bonusPoints: 0, createdAt: '2024-01-01', ordersCount: 0, totalSpent: 0 },
 ];
 
 export const MOCK_SELLER_PROFILES: SellerProfile[] = [
