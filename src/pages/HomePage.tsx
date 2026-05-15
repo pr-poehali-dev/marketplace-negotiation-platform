@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Icon from '@/components/ui/icon';
 import { CATEGORIES } from '@/data/products';
 import { useBanner } from '@/context/BannerContext';
+import { useLeads, LeadType } from '@/context/LeadsContext';
 
 interface HomePageProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -10,6 +11,23 @@ interface HomePageProps {
 export default function HomePage({ onNavigate }: HomePageProps) {
   const [search, setSearch] = useState('');
   const { banner } = useBanner();
+  const { addLead } = useLeads();
+
+  const [form, setForm] = useState({ name: '', phone: '', email: '', type: 'buyer' as LeadType, comment: '' });
+  const [formSent, setFormSent] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.phone.trim()) {
+      setFormError('Заполните имя и телефон');
+      return;
+    }
+    addLead(form);
+    setFormSent(true);
+    setFormError('');
+    setForm({ name: '', phone: '', email: '', type: 'buyer', comment: '' });
+  };
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
@@ -151,7 +169,7 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       </section>
 
       {/* CTA продавец */}
-      <section className="bg-secondary rounded-3xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-border">
+      <section className="bg-secondary rounded-3xl p-8 md:p-10 flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-border mb-8">
         <div>
           <div className="text-3xl mb-2">🚀</div>
           <h3 className="text-2xl font-black mb-1">Есть что продать?</h3>
@@ -163,6 +181,120 @@ export default function HomePage({ onNavigate }: HomePageProps) {
         >
           Стать продавцом
         </button>
+      </section>
+
+      {/* Форма заявки */}
+      <section id="request-form" className="rounded-3xl overflow-hidden border-2 border-primary/20 shadow-lg shadow-primary/5">
+        <div className="bg-gradient-to-r from-primary/10 to-accent/10 px-8 py-6 border-b-2 border-primary/10">
+          <div className="text-3xl mb-1">📋</div>
+          <h3 className="text-2xl font-black mb-1">Оставить заявку</h3>
+          <p className="text-muted-foreground text-sm">Мы свяжемся с вами — расскажем всё о платформе и поможем начать</p>
+        </div>
+
+        <div className="bg-white px-8 py-7">
+          {formSent ? (
+            <div className="text-center py-8 animate-fade-in">
+              <div className="text-5xl mb-4">🎉</div>
+              <h4 className="text-xl font-black mb-2">Заявка принята!</h4>
+              <p className="text-muted-foreground text-sm mb-6">Мы свяжемся с вами в ближайшее время</p>
+              <button
+                onClick={() => setFormSent(false)}
+                className="btn-outline px-6 py-2.5 text-sm"
+              >
+                Отправить ещё одну
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                    Имя <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Иван Иванов"
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">
+                    Телефон <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={form.phone}
+                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="+7 900 000-00-00"
+                    type="tel"
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">Email</label>
+                  <input
+                    value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                    placeholder="mail@example.com"
+                    type="email"
+                    className="w-full px-4 py-3 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">Я хочу</label>
+                  <div className="grid grid-cols-2 gap-2 h-[46px]">
+                    {([
+                      { value: 'buyer',  label: '🛍️ Покупать' },
+                      { value: 'seller', label: '🏪 Продавать' },
+                    ] as { value: LeadType; label: string }[]).map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, type: opt.value }))}
+                        className={`h-full rounded-xl text-sm font-bold border-2 transition-all ${
+                          form.type === opt.value
+                            ? 'bg-primary text-white border-primary shadow-md shadow-primary/25'
+                            : 'bg-white text-foreground border-border hover:border-primary/50'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">Комментарий</label>
+                <textarea
+                  value={form.comment}
+                  onChange={e => setForm(f => ({ ...f, comment: e.target.value }))}
+                  placeholder="Расскажите о себе или задайте вопрос..."
+                  rows={3}
+                  className="w-full px-4 py-3 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-colors resize-none"
+                />
+              </div>
+
+              {formError && (
+                <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                  <Icon name="AlertCircle" size={15} />
+                  {formError}
+                </div>
+              )}
+
+              <button type="submit" className="btn-primary w-full py-3.5 text-base">
+                Отправить заявку →
+              </button>
+
+              <p className="text-xs text-muted-foreground text-center">
+                Нажимая кнопку, вы соглашаетесь на обработку персональных данных
+              </p>
+            </form>
+          )}
+        </div>
       </section>
     </main>
   );

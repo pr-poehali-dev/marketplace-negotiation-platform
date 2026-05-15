@@ -6,15 +6,19 @@ import AdminOverviewTab from '@/pages/admin/AdminOverviewTab';
 import AdminShopsTab from '@/pages/admin/AdminShopsTab';
 import AdminBuyersTab from '@/pages/admin/AdminBuyersTab';
 import AdminContentTab from '@/pages/admin/AdminContentTab';
+import AdminLeadsTab from '@/pages/admin/AdminLeadsTab';
+import { useLeads } from '@/context/LeadsContext';
 
 interface AdminPageProps {
   onNavigate: (page: string) => void;
 }
 
-type AdminTab = 'overview' | 'shops' | 'buyers' | 'content';
+type AdminTab = 'overview' | 'shops' | 'buyers' | 'content' | 'leads';
 
 export default function AdminPage({ onNavigate }: AdminPageProps) {
   const { user } = useAuth();
+  const { leads } = useLeads();
+  const newLeadsCount = leads.filter(l => l.status === 'new').length;
   const [tab, setTab] = useState<AdminTab>('overview');
 
   /* ─ shops state ─ */
@@ -130,16 +134,22 @@ export default function AdminPage({ onNavigate }: AdminPageProps) {
         <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
           {([
             { key: 'overview', label: 'Обзор',        emoji: '📊' },
+            { key: 'leads',    label: 'Заявки',        emoji: '📋' },
             { key: 'shops',    label: 'Магазины',      emoji: '🏪' },
             { key: 'buyers',   label: 'Покупатели',    emoji: '👥' },
             { key: 'content',  label: 'Контент сайта', emoji: '🎨' },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
-              className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+              className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all relative ${
                 tab === t.key ? 'bg-primary text-white shadow-md shadow-primary/30' : 'bg-white border-2 border-border text-muted-foreground hover:border-primary/50'
               }`}
             >
               <span>{t.emoji}</span>{t.label}
+              {t.key === 'leads' && newLeadsCount > 0 && (
+                <span className={`ml-1 min-w-[18px] h-[18px] px-0.5 rounded-full text-[10px] font-black flex items-center justify-center ${tab === 'leads' ? 'bg-white text-primary' : 'bg-red-500 text-white'}`}>
+                  {newLeadsCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -210,6 +220,8 @@ export default function AdminPage({ onNavigate }: AdminPageProps) {
             onAddBuyerBonus={addBuyerBonus}
           />
         )}
+
+        {tab === 'leads' && <AdminLeadsTab />}
 
         {tab === 'content' && <AdminContentTab />}
       </div>
