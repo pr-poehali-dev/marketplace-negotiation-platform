@@ -1,54 +1,48 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/icon';
-import ProductCard from '@/components/ProductCard';
-import { PRODUCTS, CATEGORIES, Product } from '@/data/products';
+import { CATEGORIES } from '@/data/products';
+import { useBanner } from '@/context/BannerContext';
 
 interface HomePageProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
-  onAddToCart: (product: Product) => void;
 }
 
-export default function HomePage({ onNavigate, onAddToCart }: HomePageProps) {
+export default function HomePage({ onNavigate }: HomePageProps) {
   const [search, setSearch] = useState('');
-
-  const popular = PRODUCTS.slice(0, 4);
+  const { banner } = useBanner();
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       {/* Hero */}
       <section className="mb-12">
-        <div className="relative rounded-3xl overflow-hidden" style={{ background: 'linear-gradient(135deg, hsl(24,95%,53%) 0%, hsl(330,85%,60%) 50%, hsl(271,76%,60%) 100%)' }}>
-          <div className="absolute inset-0">
-            <img src={PRODUCTS[0].image} alt="" className="w-full h-full object-cover opacity-10" />
-          </div>
-          {/* Декоративные кружки */}
+        <div className="relative rounded-3xl overflow-hidden" style={{ background: banner.gradient }}>
           <div className="absolute top-8 right-12 w-32 h-32 bg-white/10 rounded-full" />
           <div className="absolute bottom-0 right-40 w-48 h-48 bg-white/10 rounded-full translate-y-1/2" />
           <div className="absolute top-0 right-80 w-16 h-16 bg-white/15 rounded-full -translate-y-1/2" />
 
           <div className="relative z-10 px-8 py-12 md:py-16 max-w-xl">
             <div className="inline-flex items-center gap-2 bg-white/20 text-white text-xs font-bold px-3 py-1.5 rounded-full mb-5 backdrop-blur-sm">
-              ✅ Абсолютно бесплатно!
+              {banner.badge}
             </div>
-            <h1 className="text-3xl md:text-5xl font-black text-white leading-tight mb-4">
-              О'kak — торгуйся<br />и побеждай! 🎉
+            <h1 className="text-3xl md:text-5xl font-black text-white leading-tight mb-4" style={{ whiteSpace: 'pre-line' }}>
+              {banner.title}
             </h1>
-            <p className="text-white/80 mb-8 text-sm leading-relaxed">
-              Предлагай свою цену, продавец принимает — и сразу в чат!<br />
-              Тысячи товаров. Встроенный торг. Полностью бесплатно.
+            <p className="text-white/80 mb-8 text-sm leading-relaxed" style={{ whiteSpace: 'pre-line' }}>
+              {banner.subtitle}
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => onNavigate('catalog')}
-                className="px-6 py-3 bg-white text-primary rounded-xl font-black text-sm hover:opacity-90 transition-all active:scale-95 shadow-lg"
+                className="btn-3d px-6 py-3 bg-white text-primary rounded-xl font-black text-sm"
+                style={{ '--btn-shadow': '0 0% 70%' } as React.CSSProperties}
               >
-                Смотреть каталог
+                {banner.btnPrimary}
               </button>
               <button
-                onClick={() => onNavigate('profile')}
+                onClick={() => onNavigate('seller-register')}
                 className="px-6 py-3 bg-white/20 text-white rounded-xl font-bold text-sm hover:bg-white/30 transition-all backdrop-blur-sm"
               >
-                Стать продавцом
+                {banner.btnSecondary}
               </button>
             </div>
           </div>
@@ -58,10 +52,10 @@ export default function HomePage({ onNavigate, onAddToCart }: HomePageProps) {
       {/* Фичи */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
         {[
-          { emoji: '🤝', title: 'Торгуйся', desc: 'Предлагай свою цену продавцу', color: 'bg-orange-50 border-orange-200' },
-          { emoji: '✅', title: 'Бесплатно', desc: 'Никаких комиссий навсегда', color: 'bg-green-50 border-green-200' },
-          { emoji: '💬', title: 'Чат', desc: 'Прямое общение с продавцом', color: 'bg-blue-50 border-blue-200' },
-          { emoji: '🎁', title: 'Бонусы', desc: 'Баллы за каждую покупку', color: 'bg-purple-50 border-purple-200' },
+          { emoji: '🤝', title: 'Торгуйся',   desc: 'Предлагай свою цену продавцу', color: 'bg-orange-50 border-orange-200' },
+          { emoji: '✅', title: 'Бесплатно',  desc: 'Никаких комиссий навсегда',    color: 'bg-green-50 border-green-200'  },
+          { emoji: '💬', title: 'Чат',        desc: 'Прямое общение с продавцом',   color: 'bg-blue-50 border-blue-200'    },
+          { emoji: '🎁', title: 'Бонусы',     desc: 'Баллы за каждую покупку',      color: 'bg-purple-50 border-purple-200'},
         ].map(feat => (
           <div key={feat.title} className={`border-2 ${feat.color} rounded-2xl p-4 text-center`}>
             <span className="text-2xl block mb-1.5">{feat.emoji}</span>
@@ -87,10 +81,7 @@ export default function HomePage({ onNavigate, onAddToCart }: HomePageProps) {
               className="w-full pl-11 pr-4 py-3.5 bg-white border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary transition-colors"
             />
           </div>
-          <button
-            type="submit"
-            className="px-6 py-3.5 bg-primary text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all active:scale-95 shadow-md shadow-primary/30"
-          >
+          <button type="submit" className="btn-primary px-6 py-3.5">
             Найти
           </button>
         </form>
@@ -100,12 +91,22 @@ export default function HomePage({ onNavigate, onAddToCart }: HomePageProps) {
       <section className="mb-10">
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {CATEGORIES.map((cat, i) => {
-            const colors = ['bg-orange-100 text-orange-700 border-orange-200', 'bg-blue-100 text-blue-700 border-blue-200', 'bg-green-100 text-green-700 border-green-200', 'bg-pink-100 text-pink-700 border-pink-200', 'bg-purple-100 text-purple-700 border-purple-200', 'bg-yellow-100 text-yellow-700 border-yellow-200', 'bg-red-100 text-red-700 border-red-200', 'bg-teal-100 text-teal-700 border-teal-200'];
+            const colors = [
+              'bg-orange-100 text-orange-700 border-orange-200',
+              'bg-blue-100 text-blue-700 border-blue-200',
+              'bg-green-100 text-green-700 border-green-200',
+              'bg-pink-100 text-pink-700 border-pink-200',
+              'bg-purple-100 text-purple-700 border-purple-200',
+              'bg-yellow-100 text-yellow-700 border-yellow-200',
+              'bg-red-100 text-red-700 border-red-200',
+              'bg-teal-100 text-teal-700 border-teal-200',
+            ];
             return (
               <button
                 key={cat}
                 onClick={() => onNavigate('catalog', { category: cat })}
-                className={`flex-shrink-0 px-4 py-2 border-2 rounded-full text-sm font-semibold transition-all hover:scale-105 ${colors[i % colors.length]}`}
+                className={`btn-3d flex-shrink-0 px-4 py-2 border-2 rounded-full text-sm font-semibold transition-all ${colors[i % colors.length]}`}
+                style={{ '--btn-shadow': '0 0% 70%' } as React.CSSProperties}
               >
                 {cat}
               </button>
@@ -114,36 +115,13 @@ export default function HomePage({ onNavigate, onAddToCart }: HomePageProps) {
         </div>
       </section>
 
-      {/* Popular */}
-      <section className="mb-12">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-black flex items-center gap-2">🔥 Популярное</h2>
-          <button
-            onClick={() => onNavigate('catalog')}
-            className="text-sm text-primary font-semibold hover:underline flex items-center gap-1 transition-colors"
-          >
-            Все товары <Icon name="ArrowRight" size={14} />
-          </button>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {popular.map(product => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onNavigate={onNavigate}
-              onAddToCart={onAddToCart}
-            />
-          ))}
-        </div>
-      </section>
-
       {/* Stats */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
         {[
-          { label: 'Товаров', value: '12 450+', emoji: '📦' },
-          { label: 'Продавцов', value: '830', emoji: '🏪' },
-          { label: 'Покупателей', value: '45 000+', emoji: '👥' },
-          { label: 'Сделок в день', value: '2 300', emoji: '🤝' },
+          { label: 'Товаров',      value: '12 450+', emoji: '📦' },
+          { label: 'Продавцов',    value: '830',     emoji: '🏪' },
+          { label: 'Покупателей',  value: '45 000+', emoji: '👥' },
+          { label: 'Сделок в день', value: '2 300',  emoji: '🤝' },
         ].map(stat => (
           <div key={stat.label} className="bg-white rounded-2xl border-2 border-border p-5 text-center hover:border-primary/40 transition-colors">
             <div className="text-2xl mb-1">{stat.emoji}</div>
@@ -164,7 +142,8 @@ export default function HomePage({ onNavigate, onAddToCart }: HomePageProps) {
           </div>
           <button
             onClick={() => onNavigate('catalog')}
-            className="flex-shrink-0 px-8 py-3.5 bg-white text-foreground rounded-xl font-black text-sm hover:opacity-90 transition-all shadow-lg"
+            className="btn-3d flex-shrink-0 px-8 py-3.5 bg-white text-foreground rounded-xl font-black text-sm"
+            style={{ '--btn-shadow': '0 0% 70%' } as React.CSSProperties}
           >
             Попробовать торг →
           </button>
@@ -176,13 +155,13 @@ export default function HomePage({ onNavigate, onAddToCart }: HomePageProps) {
         <div>
           <div className="text-3xl mb-2">🚀</div>
           <h3 className="text-2xl font-black mb-1">Есть что продать?</h3>
-          <p className="text-muted-foreground text-sm">Размести объявление бесплатно. Без комиссий. Навсегда.</p>
+          <p className="text-muted-foreground text-sm max-w-md">Создай магазин бесплатно за 5 минут. Продавай без комиссий. Принимай оффер-цены от покупателей.</p>
         </div>
         <button
-          onClick={() => onNavigate('profile')}
-          className="flex-shrink-0 px-8 py-3.5 bg-primary text-white rounded-xl font-black text-sm hover:opacity-90 transition-all shadow-md shadow-primary/30"
+          onClick={() => onNavigate('seller-register')}
+          className="btn-primary flex-shrink-0 px-8 py-3.5"
         >
-          Разместить товар
+          Стать продавцом
         </button>
       </section>
     </main>

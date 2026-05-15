@@ -107,11 +107,74 @@
     color: hsl(211, 95%, 55%);
   }
 
+  /* ── Объёмные кнопки с эффектом нажатия ── */
   .btn-primary {
-    @apply px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm transition-all hover:opacity-90 active:scale-95;
+    @apply px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm;
+    box-shadow:
+      0 4px 0 hsl(24 95% 38%),
+      0 6px 12px hsl(24 95% 53% / 35%);
+    transition:
+      box-shadow 0.1s ease,
+      transform 0.1s ease;
   }
+  .btn-primary:hover {
+    box-shadow:
+      0 5px 0 hsl(24 95% 38%),
+      0 8px 16px hsl(24 95% 53% / 40%);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    box-shadow:
+      0 1px 0 hsl(24 95% 38%),
+      0 2px 6px hsl(24 95% 53% / 30%);
+    transform: translateY(3px);
+  }
+
   .btn-outline {
-    @apply px-5 py-2.5 border-2 border-primary text-primary rounded-xl font-semibold text-sm transition-all hover:bg-primary hover:text-white active:scale-95;
+    @apply px-5 py-2.5 border-2 border-primary text-primary rounded-xl font-semibold text-sm;
+    box-shadow:
+      0 3px 0 hsl(24 95% 38% / 40%),
+      0 4px 10px hsl(24 95% 53% / 15%);
+    transition:
+      box-shadow 0.1s ease,
+      transform 0.1s ease,
+      background 0.15s ease,
+      color 0.15s ease;
+  }
+  .btn-outline:hover {
+    @apply bg-primary text-white;
+    box-shadow:
+      0 4px 0 hsl(24 95% 38% / 60%),
+      0 6px 14px hsl(24 95% 53% / 25%);
+    transform: translateY(-1px);
+  }
+  .btn-outline:active {
+    box-shadow:
+      0 1px 0 hsl(24 95% 38% / 40%),
+      0 1px 4px hsl(24 95% 53% / 15%);
+    transform: translateY(2px);
+  }
+
+  /* Универсальный 3D-эффект для любых кнопок через класс */
+  .btn-3d {
+    box-shadow:
+      0 4px 0 hsl(var(--btn-shadow, 24 95% 38%)),
+      0 6px 12px rgb(0 0 0 / 0.12);
+    transition:
+      box-shadow 0.1s ease,
+      transform 0.1s ease;
+  }
+  .btn-3d:hover {
+    box-shadow:
+      0 5px 0 hsl(var(--btn-shadow, 24 95% 38%)),
+      0 8px 16px rgb(0 0 0 / 0.15);
+    transform: translateY(-1px);
+  }
+  .btn-3d:active {
+    box-shadow:
+      0 1px 0 hsl(var(--btn-shadow, 24 95% 38%)),
+      0 2px 6px rgb(0 0 0 / 0.1);
+    transform: translateY(3px);
   }
 }
 

@@ -16,12 +16,10 @@ export default function Header({ currentPage, onNavigate, cartCount, onShowAuth 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { key: 'home', label: 'Главная', emoji: '🏠' },
-    { key: 'catalog', label: 'Каталог', emoji: '🛍️' },
-    { key: 'stores', label: 'Магазины', emoji: '🏪' },
-    { key: 'bonuses', label: 'Бонусы', emoji: '🎁' },
-    { key: 'chat', label: 'Сообщения', emoji: '💬' },
-    { key: 'profile', label: 'Кабинет', emoji: '👤' },
+    { key: 'home',    label: 'Главная',    emoji: '🏠' },
+    { key: 'bonuses', label: 'Бонусы',     emoji: '🎁' },
+    { key: 'chat',    label: 'Сообщения',  emoji: '💬' },
+    { key: 'profile', label: 'Кабинет',    emoji: '👤' },
   ];
 
   const handleSearch = (e: React.FormEvent) => {
@@ -106,7 +104,7 @@ export default function Header({ currentPage, onNavigate, cartCount, onShowAuth 
             ) : (
               <button
                 onClick={onShowAuth}
-                className="hidden lg:flex items-center gap-1.5 px-3 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all shadow-sm"
+                className="btn-3d hidden lg:flex items-center gap-1.5 px-3 py-2 bg-primary text-white rounded-xl text-sm font-bold"
               >
                 <Icon name="LogIn" size={14} />
                 Войти

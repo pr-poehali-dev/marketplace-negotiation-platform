@@ -4,6 +4,7 @@ import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { AuthProvider } from '@/context/AuthContext';
 import { NotificationsProvider } from '@/context/NotificationsContext';
+import { BannerProvider } from '@/context/BannerContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import HomePage from '@/pages/HomePage';
@@ -156,13 +157,15 @@ function AppInner() {
 export default function App() {
   return (
     <AuthProvider>
-      <NotificationsProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AppInner />
-        </TooltipProvider>
-      </NotificationsProvider>
+      <BannerProvider>
+        <NotificationsProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <AppInner />
+          </TooltipProvider>
+        </NotificationsProvider>
+      </BannerProvider>
     </AuthProvider>
   );
 }
