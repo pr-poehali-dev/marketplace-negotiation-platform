@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 import { PRODUCTS } from '@/data/products';
 import { MOCK_SELLER_PROFILES } from '@/data/auth';
@@ -16,7 +16,21 @@ const ORDERS = [
   { id: '#МК-91005', date: '14 мая 2026', product: 'Кожаный кошелёк Slim', article: 'ОДЕ-00002', price: 3490, status: 'processing', statusLabel: 'В обработке' },
 ];
 
-const MY_LISTINGS = PRODUCTS.slice(0, 2);
+interface ListingDraft {
+  id: number;
+  name: string;
+  price: number;
+  description: string;
+  image: string;
+  article: string;
+  inStock: boolean;
+  category: string;
+}
+
+const MY_LISTINGS_DEFAULT: ListingDraft[] = PRODUCTS.slice(0, 2).map(p => ({
+  id: p.id, name: p.name, price: p.price, description: p.description,
+  image: p.image, article: p.article, inStock: p.inStock, category: p.category,
+}));
 
 const STATUS_COLORS: Record<string, string> = {
   delivered: 'bg-green-100 text-green-700',
@@ -27,6 +41,28 @@ const STATUS_COLORS: Record<string, string> = {
 export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps) {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'orders' | 'listings' | 'qr' | 'settings'>('orders');
+
+  /* ── listing editor ── */
+  const [listings, setListings] = useState<ListingDraft[]>(MY_LISTINGS_DEFAULT);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<ListingDraft | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const openEdit = (l: ListingDraft) => { setEditDraft({ ...l }); setEditId(l.id); };
+  const closeEdit = () => { setEditId(null); setEditDraft(null); };
+  const saveEdit = () => {
+    if (!editDraft) return;
+    setListings(prev => prev.map(l => l.id === editDraft.id ? editDraft : l));
+    closeEdit();
+  };
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editDraft) return;
+    const reader = new FileReader();
+    reader.onload = ev => setEditDraft(d => d ? { ...d, image: ev.target?.result as string } : d);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const sellerProfile = user ? MOCK_SELLER_PROFILES.find(s => s.userId === user.id) : null;
 
@@ -193,7 +229,7 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
             </button>
           </div>
           <div className="space-y-3">
-            {MY_LISTINGS.map(product => (
+            {listings.map(product => (
               <div key={product.id} className="bg-white border-2 border-border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/40 transition-colors">
                 <div className="w-14 h-14 bg-secondary rounded-xl overflow-hidden flex-shrink-0">
                   <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
@@ -202,10 +238,9 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
                   <p className="font-bold text-sm mb-0.5">{product.name}</p>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                     <span className="font-mono bg-secondary px-1.5 py-0.5 rounded">{product.article}</span>
-                    <span className="font-mono bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded">{product.sellerCode}</span>
-                    <Icon name="Star" size={10} className="fill-amber-400 text-amber-400" />
-                    <span>{product.rating} · {product.reviews} отзывов</span>
+                    <span className="text-xs">{product.category}</span>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{product.description}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <div className="font-black">{product.price.toLocaleString('ru')} ₽</div>
@@ -214,16 +249,113 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
                   </div>
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
-                  <button className="p-2 hover:bg-secondary rounded-xl transition-colors">
+                  <button onClick={() => openEdit(product)} className="p-2 hover:bg-secondary rounded-xl transition-colors">
                     <Icon name="Pencil" size={14} className="text-muted-foreground" />
                   </button>
-                  <button className="p-2 hover:bg-secondary rounded-xl transition-colors">
-                    <Icon name="Trash2" size={14} className="text-muted-foreground" />
+                  <button onClick={() => setListings(prev => prev.filter(l => l.id !== product.id))} className="p-2 hover:bg-red-50 rounded-xl transition-colors">
+                    <Icon name="Trash2" size={14} className="text-red-400" />
                   </button>
                 </div>
               </div>
             ))}
           </div>
+
+          {/* Edit modal */}
+          {editId !== null && editDraft && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-5 border-b-2 border-border">
+                  <h3 className="font-black">✏️ Редактировать товар</h3>
+                  <button onClick={closeEdit} className="p-2 hover:bg-secondary rounded-xl transition-colors">
+                    <Icon name="X" size={16} />
+                  </button>
+                </div>
+                <div className="p-5 space-y-4">
+                  {/* Фото */}
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">Фото товара</label>
+                    <div className="flex gap-3 items-start">
+                      <div className="w-24 h-24 bg-secondary rounded-xl overflow-hidden flex-shrink-0 border-2 border-border">
+                        {editDraft.image
+                          ? <img src={editDraft.image} alt="" className="w-full h-full object-cover" />
+                          : <div className="w-full h-full flex items-center justify-center text-muted-foreground/40"><Icon name="Image" size={24} /></div>
+                        }
+                      </div>
+                      <div className="flex-1">
+                        <button
+                          onClick={() => photoInputRef.current?.click()}
+                          className="w-full py-2.5 border-2 border-dashed border-primary/40 rounded-xl text-xs font-bold text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Icon name="Upload" size={13} /> Загрузить фото
+                        </button>
+                        <p className="text-[10px] text-muted-foreground mt-1.5">JPG, PNG, WebP · до 5 МБ</p>
+                        <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 block">Название</label>
+                    <input
+                      value={editDraft.name}
+                      onChange={e => setEditDraft(d => d ? { ...d, name: e.target.value } : d)}
+                      className="w-full px-3 py-2.5 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 block">Описание</label>
+                    <textarea
+                      value={editDraft.description}
+                      onChange={e => setEditDraft(d => d ? { ...d, description: e.target.value } : d)}
+                      rows={4}
+                      className="w-full px-3 py-2.5 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 block">Цена, ₽</label>
+                      <input
+                        type="number"
+                        value={editDraft.price}
+                        onChange={e => setEditDraft(d => d ? { ...d, price: Number(e.target.value) } : d)}
+                        className="w-full px-3 py-2.5 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 block">Наличие</label>
+                      <div className="grid grid-cols-2 gap-1.5 h-[42px]">
+                        <button
+                          type="button"
+                          onClick={() => setEditDraft(d => d ? { ...d, inStock: true } : d)}
+                          className={`h-full rounded-xl text-xs font-bold border-2 transition-all ${editDraft.inStock ? 'bg-green-600 text-white border-green-600' : 'border-border text-foreground'}`}
+                        >
+                          В наличии
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditDraft(d => d ? { ...d, inStock: false } : d)}
+                          className={`h-full rounded-xl text-xs font-bold border-2 transition-all ${!editDraft.inStock ? 'bg-muted text-muted-foreground border-border' : 'border-border text-foreground'}`}
+                        >
+                          Нет
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={closeEdit} className="flex-1 py-3 border-2 border-border rounded-xl text-sm font-bold text-muted-foreground hover:border-foreground/30">
+                      Отмена
+                    </button>
+                    <button onClick={saveEdit} className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-black hover:opacity-90">
+                      Сохранить
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -7,13 +7,14 @@ import AdminShopsTab from '@/pages/admin/AdminShopsTab';
 import AdminBuyersTab from '@/pages/admin/AdminBuyersTab';
 import AdminContentTab from '@/pages/admin/AdminContentTab';
 import AdminLeadsTab from '@/pages/admin/AdminLeadsTab';
+import AdminProductsTab from '@/pages/admin/AdminProductsTab';
 import { useLeads } from '@/context/LeadsContext';
 
 interface AdminPageProps {
   onNavigate: (page: string) => void;
 }
 
-type AdminTab = 'overview' | 'shops' | 'buyers' | 'content' | 'leads';
+type AdminTab = 'overview' | 'shops' | 'buyers' | 'content' | 'leads' | 'products';
 
 export default function AdminPage({ onNavigate }: AdminPageProps) {
   const { user } = useAuth();
@@ -133,11 +134,12 @@ export default function AdminPage({ onNavigate }: AdminPageProps) {
         {/* Tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
           {([
-            { key: 'overview', label: 'Обзор',        emoji: '📊' },
-            { key: 'leads',    label: 'Заявки',        emoji: '📋' },
-            { key: 'shops',    label: 'Магазины',      emoji: '🏪' },
-            { key: 'buyers',   label: 'Покупатели',    emoji: '👥' },
-            { key: 'content',  label: 'Контент сайта', emoji: '🎨' },
+            { key: 'overview',  label: 'Обзор',        emoji: '📊' },
+            { key: 'leads',     label: 'Заявки',        emoji: '📋' },
+            { key: 'products',  label: 'Товары',        emoji: '📦' },
+            { key: 'shops',     label: 'Магазины',      emoji: '🏪' },
+            { key: 'buyers',    label: 'Покупатели',    emoji: '👥' },
+            { key: 'content',   label: 'Контент сайта', emoji: '🎨' },
           ] as const).map(t => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className={`flex-shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all relative ${
@@ -222,6 +224,8 @@ export default function AdminPage({ onNavigate }: AdminPageProps) {
         )}
 
         {tab === 'leads' && <AdminLeadsTab />}
+
+        {tab === 'products' && <AdminProductsTab />}
 
         {tab === 'content' && <AdminContentTab />}
       </div>
