@@ -34,6 +34,8 @@ export const CATEGORIES = [
   'Красота',
   'Книги',
   'Игрушки',
+  'Фаст-фуд',
+  'Продукты питания',
 ];
 
 export const PRODUCTS: Product[] = [
