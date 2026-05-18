@@ -1,169 +1,166 @@
 import { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
-import { SELLERS } from '@/data/products';
-
-interface Message {
-  id: number;
-  text: string;
-  fromMe: boolean;
-  time: string;
-  status: 'sent' | 'read';
-  isOffer?: boolean;
-}
-
-interface Chat {
-  sellerId: number;
-  messages: Message[];
-}
+import { negotiationsApi, Negotiation, NegotiationMessage } from '@/api/negotiations';
+import { useAuth } from '@/context/AuthContext';
 
 interface ChatPageProps {
-  initialSellerId?: number;
-  offerPrice?: string;
-  productName?: string;
+  initialNegotiationId?: number;
   onNavigate: (page: string, params?: Record<string, string>) => void;
 }
 
-const INITIAL_CHATS: Chat[] = [
-  {
-    sellerId: 1,
-    messages: [
-      { id: 1, text: 'Здравствуйте! Интересует наушники, есть ли скидка?', fromMe: true, time: '10:15', status: 'read' },
-      { id: 2, text: 'Добрый день! Да, для вас можем сделать 5% скидку при оплате сегодня.', fromMe: false, time: '10:18', status: 'read' },
-      { id: 3, text: 'Отлично, буду думать. Сколько ждать доставку?', fromMe: true, time: '10:20', status: 'read' },
-      { id: 4, text: 'Доставка 1-2 рабочих дня по всей России.', fromMe: false, time: '10:22', status: 'read' },
-    ],
-  },
-  {
-    sellerId: 2,
-    messages: [
-      { id: 1, text: 'Здравствуйте! Есть ли кошелёк в чёрном цвете?', fromMe: true, time: '09:00', status: 'read' },
-      { id: 2, text: 'Есть! Могу выслать фото. Также есть тёмно-коричневый.', fromMe: false, time: '09:05', status: 'read' },
-    ],
-  },
-  {
-    sellerId: 3,
-    messages: [],
-  },
-];
-
-export default function ChatPage({ initialSellerId, offerPrice, productName, onNavigate }: ChatPageProps) {
-  const [chats, setChats] = useState<Chat[]>(() => {
-    // Если пришли из торга — добавляем системное сообщение о принятой цене
-    if (initialSellerId && offerPrice && productName) {
-      const now = new Date();
-      const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-      return INITIAL_CHATS.map(c =>
-        c.sellerId === initialSellerId
-          ? {
-              ...c,
-              messages: [
-                ...c.messages,
-                {
-                  id: Date.now() - 2,
-                  text: `✅ Сделка по торгу согласована! Товар: «${productName}». Ваша цена: ${Number(offerPrice).toLocaleString('ru')} ₽. Обсудите детали получения товара.`,
-                  fromMe: false,
-                  time,
-                  status: 'read' as const,
-                  isOffer: true,
-                },
-              ],
-            }
-          : c
-      );
-    }
-    return INITIAL_CHATS;
-  });
-
-  const [activeSellerId, setActiveSellerId] = useState<number>(initialSellerId || SELLERS[0].id);
+export default function ChatPage({ initialNegotiationId, onNavigate }: ChatPageProps) {
+  const { user } = useAuth();
+  const [negotiations, setNegotiations] = useState<Negotiation[]>([]);
+  const [messages, setMessages] = useState<NegotiationMessage[]>([]);
+  const [activeId, setActiveId] = useState<number | null>(initialNegotiationId || null);
+  const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [input, setInput] = useState('');
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const activeChat = chats.find(c => c.sellerId === activeSellerId) || chats[0];
-  const activeSeller = SELLERS.find(s => s.id === activeSellerId) || SELLERS[0];
+  useEffect(() => {
+    if (!user) return;
+    setLoading(true);
+    negotiationsApi.list()
+      .then(res => {
+        setNegotiations(res.negotiations);
+        if (!activeId && res.negotiations.length > 0) {
+          setActiveId(res.negotiations[0].id);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    setMessagesLoading(true);
+    negotiationsApi.messages(activeId)
+      .then(res => setMessages(res.messages))
+      .catch(() => setMessages([]))
+      .finally(() => setMessagesLoading(false));
+  }, [activeId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [activeChat.messages]);
+  }, [messages]);
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
-    const now = new Date();
-    const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-    const newMsg: Message = {
-      id: Date.now(),
-      text: input.trim(),
-      fromMe: true,
-      time,
-      status: 'sent',
-    };
-    setChats(prev =>
-      prev.map(c =>
-        c.sellerId === activeSellerId
-          ? { ...c, messages: [...c.messages, newMsg] }
-          : c
-      )
-    );
-    setInput('');
+  const activeNeg = negotiations.find(n => n.id === activeId) || null;
 
-    setTimeout(() => {
-      const replies = [
-        'Отлично! Могу передать товар в любое удобное для вас время.',
-        'Хорошо! Напишите ваш адрес для доставки или удобную точку самовывоза.',
-        'Договорились! Как вам удобнее получить товар — доставка или самовывоз?',
-        'Принято! Когда вам удобно встретиться для передачи?',
-      ];
-      const reply: Message = {
-        id: Date.now() + 1,
-        text: replies[Math.floor(Math.random() * replies.length)],
-        fromMe: false,
-        time: `${now.getHours()}:${String(now.getMinutes() + 1).padStart(2, '0')}`,
-        status: 'read',
-      };
-      setChats(prev =>
-        prev.map(c =>
-          c.sellerId === activeSellerId
-            ? { ...c, messages: [...c.messages, reply] }
-            : c
-        )
-      );
-    }, 1500);
+  const sendMessage = async () => {
+    if (!input.trim() || !activeId || sending) return;
+    setSending(true);
+    try {
+      await negotiationsApi.sendMessage(activeId, { action: 'message', message: input.trim() });
+      setInput('');
+      // Перезагрузим сообщения
+      const res = await negotiationsApi.messages(activeId);
+      setMessages(res.messages);
+    } catch {
+      // ignore
+    } finally {
+      setSending(false);
+    }
   };
+
+  const formatTime = (iso: string) => {
+    try {
+      const d = new Date(iso);
+      return `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    } catch {
+      return '';
+    }
+  };
+
+  const getStatusBadge = (status: Negotiation['status']) => {
+    const map: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-700',
+      active: 'bg-blue-100 text-blue-700',
+      accepted: 'bg-green-100 text-green-700',
+      rejected: 'bg-red-100 text-red-700',
+      cancelled: 'bg-gray-100 text-gray-700',
+      disputed: 'bg-orange-100 text-orange-700',
+    };
+    const labels: Record<string, string> = {
+      pending: 'Ожидает',
+      active: 'Активный',
+      accepted: 'Принят',
+      rejected: 'Отклонён',
+      cancelled: 'Отменён',
+      disputed: 'Спор',
+    };
+    return { cls: map[status] || '', label: labels[status] || status };
+  };
+
+  if (!user) {
+    return (
+      <main className="max-w-xl mx-auto px-4 py-20 text-center">
+        <span className="text-5xl block mb-4">💬</span>
+        <h2 className="text-xl font-bold mb-2">Войдите, чтобы видеть переговоры</h2>
+        <button onClick={() => onNavigate('auth')} className="px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all">
+          Войти
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="flex items-center gap-3 mb-6">
         <span className="text-2xl">💬</span>
-        <h1 className="text-2xl font-black">Сообщения</h1>
+        <h1 className="text-2xl font-black">Переговоры</h1>
       </div>
 
       <div className="bg-white border-2 border-border rounded-3xl overflow-hidden flex h-[calc(100vh-220px)] min-h-[500px]">
         {/* Sidebar */}
-        <div className="w-64 flex-shrink-0 border-r-2 border-border flex flex-col">
+        <div className="w-72 flex-shrink-0 border-r-2 border-border flex flex-col">
           <div className="p-4 border-b-2 border-border">
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Диалоги</p>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Мои переговоры</p>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {SELLERS.map(seller => {
-              const chat = chats.find(c => c.sellerId === seller.id);
-              const lastMsg = chat?.messages.at(-1);
-              const isActive = activeSellerId === seller.id;
+            {loading && (
+              <div className="p-4 space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex gap-3 animate-pulse">
+                    <div className="w-10 h-10 bg-secondary rounded-full flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-3 bg-secondary rounded w-3/4" />
+                      <div className="h-3 bg-secondary rounded w-1/2" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!loading && negotiations.length === 0 && (
+              <div className="p-6 text-center text-muted-foreground text-sm">
+                <span className="text-4xl block mb-2 opacity-40">📭</span>
+                <p>Переговоров пока нет</p>
+              </div>
+            )}
+            {!loading && negotiations.map(neg => {
+              const isActive = activeId === neg.id;
+              const badge = getStatusBadge(neg.status);
               return (
                 <button
-                  key={seller.id}
-                  onClick={() => setActiveSellerId(seller.id)}
-                  className={`w-full flex items-center gap-3 p-3 text-left transition-colors ${isActive ? 'bg-primary/10 border-r-2 border-primary' : 'hover:bg-secondary'}`}
+                  key={neg.id}
+                  onClick={() => setActiveId(neg.id)}
+                  className={`w-full flex items-start gap-3 p-3 text-left transition-colors ${isActive ? 'bg-primary/10 border-r-2 border-primary' : 'hover:bg-secondary'}`}
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${isActive ? 'bg-primary text-white' : 'bg-secondary text-foreground'}`}>
-                    {seller.avatar}
+                    {neg.shop_name?.slice(0, 2).toUpperCase() || '??'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className={`text-sm font-semibold truncate ${isActive ? 'text-primary' : ''}`}>{seller.name}</span>
-                      {lastMsg && <span className="text-xs text-muted-foreground flex-shrink-0">{lastMsg.time}</span>}
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={`text-sm font-semibold truncate ${isActive ? 'text-primary' : ''}`}>
+                        {neg.product.title}
+                      </span>
+                      <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${badge.cls}`}>{badge.label}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {lastMsg ? (lastMsg.fromMe ? `Вы: ${lastMsg.text}` : lastMsg.text) : 'Нет сообщений'}
-                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{neg.shop_name}</p>
+                    {neg.offered_price && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Предложено: {neg.offered_price.toLocaleString('ru')} ₽</p>
+                    )}
                   </div>
                 </button>
               );
@@ -173,85 +170,132 @@ export default function ChatPage({ initialSellerId, offerPrice, productName, onN
 
         {/* Chat area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Chat header */}
-          <div className="flex items-center gap-3 p-4 border-b-2 border-border">
-            <div className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center text-sm font-black flex-shrink-0">
-              {activeSeller.avatar}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-bold">{activeSeller.name}</div>
-              <div className="text-xs text-green-500 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full inline-block" />
-                Онлайн
-              </div>
-            </div>
-            <button
-              onClick={() => onNavigate('seller', { id: String(activeSeller.id) })}
-              className="p-2 hover:bg-secondary rounded-xl transition-colors"
-            >
-              <Icon name="User" size={16} className="text-muted-foreground" />
-            </button>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-secondary/30">
-            {activeChat.messages.length === 0 && (
-              <div className="text-center py-16 text-muted-foreground text-sm">
+          {!activeNeg ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+              <div className="text-center">
                 <span className="text-5xl block mb-3 opacity-40">💬</span>
-                <p>Начните диалог с продавцом</p>
+                <p>Выберите переговор слева</p>
               </div>
-            )}
-            {activeChat.messages.map(msg => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.isOffer ? 'justify-center' : msg.fromMe ? 'justify-end' : 'justify-start'} animate-fade-in`}
-              >
-                {msg.isOffer ? (
-                  <div className="max-w-sm bg-green-50 border-2 border-green-400 text-green-800 px-4 py-3 rounded-2xl text-xs font-medium text-center">
-                    {msg.text}
+            </div>
+          ) : (
+            <>
+              {/* Chat header */}
+              <div className="flex items-center gap-3 p-4 border-b-2 border-border">
+                <div className="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center text-sm font-black flex-shrink-0">
+                  {activeNeg.shop_name?.slice(0, 2).toUpperCase() || '??'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold truncate">{activeNeg.product.title}</div>
+                  <div className="text-xs text-muted-foreground flex items-center gap-2">
+                    <span>{activeNeg.shop_name}</span>
+                    {activeNeg.offered_price && (
+                      <span className="font-semibold text-primary">· Предложена: {activeNeg.offered_price.toLocaleString('ru')} ₽</span>
+                    )}
+                    {activeNeg.final_price && (
+                      <span className="font-semibold text-green-600">· Итог: {activeNeg.final_price.toLocaleString('ru')} ₽</span>
+                    )}
                   </div>
-                ) : (
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                      msg.fromMe
-                        ? 'bg-primary text-white rounded-br-md'
-                        : 'bg-white text-foreground rounded-bl-md border border-border'
-                    }`}
-                  >
-                    <p>{msg.text}</p>
-                    <div className={`flex items-center justify-end gap-1 mt-1 ${msg.fromMe ? 'text-white/60' : 'text-muted-foreground'}`}>
-                      <span className="text-xs">{msg.time}</span>
-                      {msg.fromMe && (
-                        <Icon name={msg.status === 'read' ? 'CheckCheck' : 'Check'} size={12} />
-                      )}
+                </div>
+                <div className={`text-xs font-bold px-2.5 py-1 rounded-full ${getStatusBadge(activeNeg.status).cls}`}>
+                  {getStatusBadge(activeNeg.status).label}
+                </div>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-secondary/30">
+                {messagesLoading && (
+                  <div className="flex justify-center py-8">
+                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+                {!messagesLoading && messages.length === 0 && (
+                  <div className="text-center py-16 text-muted-foreground text-sm">
+                    <span className="text-5xl block mb-3 opacity-40">💬</span>
+                    <p>Сообщений пока нет</p>
+                  </div>
+                )}
+                {!messagesLoading && messages.map(msg => {
+                  const isMe = user && msg.sender_id === user.id;
+                  const isSystem = msg.action === 'system';
+                  const isOffer = msg.action === 'offer' || msg.action === 'counter_offer';
+                  const isAccept = msg.action === 'accept';
+                  const isReject = msg.action === 'reject';
+
+                  if (isSystem || isAccept || isReject) {
+                    return (
+                      <div key={msg.id} className="flex justify-center animate-fade-in">
+                        <div className={`max-w-sm px-4 py-3 rounded-2xl text-xs font-medium text-center border-2 ${
+                          isAccept ? 'bg-green-50 border-green-400 text-green-800' :
+                          isReject ? 'bg-red-50 border-red-300 text-red-800' :
+                          'bg-secondary border-border text-muted-foreground'
+                        }`}>
+                          {isAccept && '✅ '}
+                          {isReject && '❌ '}
+                          {msg.message}
+                          {msg.price && <span className="block font-bold mt-1">{msg.price.toLocaleString('ru')} ₽</span>}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'} animate-fade-in`}>
+                      <div className={`max-w-xs lg:max-w-md ${isMe ? 'order-2' : ''}`}>
+                        {!isMe && (
+                          <p className="text-xs text-muted-foreground mb-1 ml-1">{msg.sender_name}</p>
+                        )}
+                        <div className={`px-4 py-2.5 rounded-2xl text-sm ${
+                          isMe
+                            ? 'bg-primary text-white rounded-br-sm'
+                            : 'bg-white text-foreground border border-border rounded-bl-sm'
+                        } ${isOffer ? 'border-2 border-orange-300 bg-orange-50 text-orange-900' : ''}`}>
+                          {isOffer && msg.price && (
+                            <p className="font-black text-base mb-1">🤝 {msg.price.toLocaleString('ru')} ₽</p>
+                          )}
+                          <p className="leading-relaxed">{msg.message}</p>
+                        </div>
+                        <p className={`text-xs text-muted-foreground mt-1 ${isMe ? 'text-right' : 'text-left ml-1'}`}>
+                          {formatTime(msg.created_at)}
+                        </p>
+                      </div>
                     </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Input */}
+              <div className="p-4 border-t-2 border-border bg-white">
+                {(activeNeg.status === 'accepted' || activeNeg.status === 'rejected' || activeNeg.status === 'cancelled') ? (
+                  <p className="text-center text-sm text-muted-foreground py-1">
+                    Переговоры завершены ({getStatusBadge(activeNeg.status).label})
+                  </p>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={e => setInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()}
+                      placeholder="Напишите сообщение..."
+                      className="flex-1 px-4 py-2.5 bg-secondary border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <button
+                      onClick={sendMessage}
+                      disabled={!input.trim() || sending}
+                      className="px-4 py-2.5 bg-primary text-white rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      {sending ? (
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Icon name="Send" size={16} />
+                      )}
+                    </button>
                   </div>
                 )}
               </div>
-            ))}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div className="p-4 border-t-2 border-border bg-white">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                placeholder="Напишите сообщение..."
-                className="flex-1 px-4 py-2.5 bg-secondary border-0 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <button
-                onClick={sendMessage}
-                disabled={!input.trim()}
-                className="px-4 py-2.5 bg-primary text-white rounded-xl hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-              >
-                <Icon name="Send" size={16} />
-              </button>
-            </div>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </main>

@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import { useAuth } from '@/context/AuthContext';
-import { MOCK_SELLER_PROFILES, MOCK_USERS, SellerProfile, User } from '@/data/auth';
+import { SellerProfile, User } from '@/data/auth';
 import AdminOverviewTab from '@/pages/admin/AdminOverviewTab';
 import AdminShopsTab from '@/pages/admin/AdminShopsTab';
 import AdminBuyersTab from '@/pages/admin/AdminBuyersTab';
@@ -9,6 +9,7 @@ import AdminContentTab from '@/pages/admin/AdminContentTab';
 import AdminLeadsTab from '@/pages/admin/AdminLeadsTab';
 import AdminProductsTab from '@/pages/admin/AdminProductsTab';
 import { useLeads } from '@/context/LeadsContext';
+import { moderatorApi, ModShop, ModUser } from '@/api/moderator';
 
 interface AdminPageProps {
   onNavigate: (page: string) => void;
@@ -22,8 +23,54 @@ export default function AdminPage({ onNavigate }: AdminPageProps) {
   const newLeadsCount = leads.filter(l => l.status === 'new').length;
   const [tab, setTab] = useState<AdminTab>('overview');
 
+  /* ─ load real data ─ */
+  useEffect(() => {
+    if (user?.role === 'moderator') {
+      moderatorApi.shops().then(d => {
+        const mapped = d.shops.map((s: ModShop) => ({
+          id: String(s.id),
+          userId: String(s.user_id),
+          sellerCode: '',
+          shopName: s.shop_name,
+          shopDescription: s.description,
+          city: s.city,
+          address: '',
+          phone: s.contact_phone,
+          logo: '',
+          status: s.status as SellerProfile['status'],
+          documents: [],
+          totalSales: s.total_sales,
+          totalRevenue: s.total_revenue,
+          productsCount: s.products_count,
+          bonusPoints: s.bonus_points,
+          createdAt: s.created_at.split('T')[0],
+          rejection_reason: s.rejection_reason,
+          owner_name: s.owner_name,
+          owner_phone: s.owner_phone,
+        } as SellerProfile & { rejection_reason: string; owner_name: string; owner_phone: string }));
+        setShops(mapped);
+      }).catch(console.error);
+      moderatorApi.users().then(d => {
+        const mapped = d.users.map((u: ModUser) => ({
+          id: String(u.id),
+          phone: u.phone,
+          name: u.name,
+          role: u.role as User['role'],
+          status: u.status as User['status'],
+          buyerCode: '',
+          avatar: u.name.substring(0, 2).toUpperCase(),
+          bonusPoints: u.bonus_points,
+          createdAt: u.created_at.split('T')[0],
+          ordersCount: u.orders_count,
+          totalSpent: u.total_spent,
+        } as User));
+        setBuyers(mapped);
+      }).catch(console.error);
+    }
+  }, [user]);
+
   /* ─ shops state ─ */
-  const [shops, setShops]               = useState<SellerProfile[]>(MOCK_SELLER_PROFILES);
+  const [shops, setShops]               = useState<SellerProfile[]>([]);
   const [selectedShop, setSelectedShop] = useState<SellerProfile | null>(null);
   const [shopTab, setShopTab]           = useState<'info' | 'docs' | 'sales' | 'content'>('info');
   const [shopFilter, setShopFilter]     = useState<'all' | 'pending' | 'approved' | 'rejected' | 'blocked'>('all');
@@ -42,7 +89,7 @@ export default function AdminPage({ onNavigate }: AdminPageProps) {
   const [contentSaved,       setContentSaved]       = useState(false);
 
   /* ─ buyers state ─ */
-  const [buyers, setBuyers]               = useState<User[]>(MOCK_USERS);
+  const [buyers, setBuyers]               = useState<User[]>([]);
   const [selectedBuyer, setSelectedBuyer] = useState<User | null>(null);
   const [buyerFilter, setBuyerFilter]     = useState<'all' | 'active' | 'blocked'>('all');
   const [buyerSearch, setBuyerSearch]     = useState('');
@@ -66,11 +113,12 @@ export default function AdminPage({ onNavigate }: AdminPageProps) {
   }
 
   /* ─ actions: shops ─ */
-  const approveShop  = (id: string) => { setShops(p => p.map(s => s.id === id ? { ...s, status: 'approved' } : s)); setSelectedShop(p => p?.id === id ? { ...p, status: 'approved' } : p); };
-  const rejectShop   = (id: string) => { if (!rejectReason.trim()) return; setShops(p => p.map(s => s.id === id ? { ...s, status: 'rejected', rejectionReason: rejectReason } : s)); setSelectedShop(p => p?.id === id ? { ...p, status: 'rejected', rejectionReason: rejectReason } : p); setRejectReason(''); setShowRejectModal(false); };
-  const blockShop    = (id: string) => { setShops(p => p.map(s => s.id === id ? { ...s, status: 'blocked' } : s)); setSelectedShop(p => p?.id === id ? { ...p, status: 'blocked' } : p); };
-  const unblockShop  = (id: string) => { setShops(p => p.map(s => s.id === id ? { ...s, status: 'approved' } : s)); setSelectedShop(p => p?.id === id ? { ...p, status: 'approved' } : p); };
-  const addShopBonus = (id: string) => { const n = Number(bonusInput); if (!n) return; setShops(p => p.map(s => s.id === id ? { ...s, bonusPoints: s.bonusPoints + n } : s)); setSelectedShop(p => p?.id === id ? { ...p, bonusPoints: (p.bonusPoints || 0) + n } : p); setBonusInput(''); setShowBonusModal(false); };
+  const updateShopState = (id: string, patch: Partial<SellerProfile>) => { setShops(p => p.map(s => s.id === id ? { ...s, ...patch } : s)); setSelectedShop(p => p?.id === id ? { ...p, ...patch } : p); };
+  const approveShop  = (id: string) => { moderatorApi.updateShop(Number(id), { status: 'approved' }).catch(console.error); updateShopState(id, { status: 'approved' }); };
+  const rejectShop   = (id: string) => { if (!rejectReason.trim()) return; moderatorApi.updateShop(Number(id), { status: 'rejected', rejection_reason: rejectReason }).catch(console.error); updateShopState(id, { status: 'rejected' }); setRejectReason(''); setShowRejectModal(false); };
+  const blockShop    = (id: string) => { moderatorApi.updateShop(Number(id), { status: 'blocked' }).catch(console.error); updateShopState(id, { status: 'blocked' }); };
+  const unblockShop  = (id: string) => { moderatorApi.updateShop(Number(id), { status: 'approved' }).catch(console.error); updateShopState(id, { status: 'approved' }); };
+  const addShopBonus = (id: string) => { const n = Number(bonusInput); if (!n) return; moderatorApi.updateShop(Number(id), { bonus_points: n }).catch(console.error); updateShopState(id, { bonusPoints: (shops.find(s=>s.id===id)?.bonusPoints||0)+n }); setBonusInput(''); setShowBonusModal(false); };
 
   /* ─ actions: content save ─ */
   const saveContent = (id: string) => {
@@ -94,9 +142,10 @@ export default function AdminPage({ onNavigate }: AdminPageProps) {
   };
 
   /* ─ actions: buyers ─ */
-  const blockBuyer    = (id: string) => { setBuyers(p => p.map(u => u.id === id ? { ...u, status: 'blocked' } : u)); setSelectedBuyer(p => p?.id === id ? { ...p, status: 'blocked' } : p); };
-  const unblockBuyer  = (id: string) => { setBuyers(p => p.map(u => u.id === id ? { ...u, status: 'active' } : u)); setSelectedBuyer(p => p?.id === id ? { ...p, status: 'active' } : p); };
-  const addBuyerBonus = (id: string) => { const n = Number(buyerBonusInput); if (!n) return; setBuyers(p => p.map(u => u.id === id ? { ...u, bonusPoints: u.bonusPoints + n } : u)); setSelectedBuyer(p => p?.id === id ? { ...p, bonusPoints: (p.bonusPoints || 0) + n } : p); setBuyerBonusInput(''); setShowBuyerBonusModal(false); };
+  const updateBuyerState = (id: string, patch: Partial<User>) => { setBuyers(p => p.map(u => u.id === id ? { ...u, ...patch } : u)); setSelectedBuyer(p => p?.id === id ? { ...p, ...patch } : p); };
+  const blockBuyer    = (id: string) => { moderatorApi.updateUser(Number(id), { status: 'blocked' }).catch(console.error); updateBuyerState(id, { status: 'blocked' }); };
+  const unblockBuyer  = (id: string) => { moderatorApi.updateUser(Number(id), { status: 'active' }).catch(console.error); updateBuyerState(id, { status: 'active' }); };
+  const addBuyerBonus = (id: string) => { const n = Number(buyerBonusInput); if (!n) return; moderatorApi.updateUser(Number(id), { bonus_points: n }).catch(console.error); updateBuyerState(id, { bonusPoints: (buyers.find(u=>u.id===id)?.bonusPoints||0)+n }); setBuyerBonusInput(''); setShowBuyerBonusModal(false); };
 
   const openShop = (shop: SellerProfile) => {
     setSelectedShop(shop);

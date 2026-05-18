@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Get sellers list",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": {"sellers": []},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import Icon from '@/components/ui/icon';
-import { CATEGORIES, PRODUCTS, SELLERS } from '@/data/products';
+import { productsApi, sellersApi, Product, Category, SellerProfile } from '@/api/products';
 import { useBanner } from '@/context/BannerContext';
 import { useLeads, LeadType } from '@/context/LeadsContext';
 
@@ -81,8 +81,22 @@ export default function HomePage({ onNavigate }: HomePageProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  /* ── top products ── */
-  const topProducts = [...PRODUCTS].sort((a, b) => b.reviews - a.reviews).slice(0, 4);
+  /* ── API data ── */
+  const [topProducts, setTopProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [sellers, setSellers] = useState<SellerProfile[]>([]);
+
+  useEffect(() => {
+    productsApi.list({ limit: 8 })
+      .then(r => setTopProducts(r.products))
+      .catch(console.error);
+    productsApi.categories()
+      .then(r => setCategories(r.categories))
+      .catch(console.error);
+    sellersApi.list()
+      .then(r => setSellers(r.sellers.slice(0, 4)))
+      .catch(console.error);
+  }, []);
 
   /* ── lead form ── */
   const [form, setForm] = useState({ name: '', phone: '', email: '', type: 'buyer' as LeadType, comment: '' });
@@ -208,13 +222,13 @@ export default function HomePage({ onNavigate }: HomePageProps) {
       {/* ── CATEGORIES ── */}
       <section>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {CATEGORIES.map((cat, i) => (
+          {categories.map((cat, i) => (
             <button
-              key={cat}
-              onClick={() => onNavigate('catalog', { category: cat })}
+              key={cat.slug}
+              onClick={() => onNavigate('catalog', { category: cat.name })}
               className={`flex-shrink-0 px-3.5 py-1.5 border-2 rounded-full text-xs font-semibold transition-all hover:opacity-80 ${CATEGORY_COLORS[i % CATEGORY_COLORS.length]}`}
             >
-              {cat}
+              {cat.icon && <span className="mr-1">{cat.icon}</span>}{cat.name}
             </button>
           ))}
         </div>
@@ -230,25 +244,41 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             <button onClick={() => onNavigate('catalog')} className="text-xs text-primary font-bold hover:underline">Все товары →</button>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            {topProducts.map(p => (
-              <button
-                key={p.id}
-                onClick={() => onNavigate('product', { id: String(p.id) })}
-                className="bg-white border-2 border-border rounded-2xl overflow-hidden text-left hover:border-primary/50 hover:shadow-md transition-all group"
-              >
-                <div className="aspect-square overflow-hidden bg-secondary relative">
-                  <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                  <div className="absolute top-2 left-2 bg-primary text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                    #{PRODUCTS.sort((a, b) => b.reviews - a.reviews).findIndex(x => x.id === p.id) + 1}
+            {topProducts.slice(0, 4).map((p, idx) => {
+              const image = p.images?.[0];
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => onNavigate('product', { id: String(p.id) })}
+                  className="bg-white border-2 border-border rounded-2xl overflow-hidden text-left hover:border-primary/50 hover:shadow-md transition-all group"
+                >
+                  <div className="aspect-square overflow-hidden bg-secondary relative">
+                    {image
+                      ? <img src={image} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      : <div className="w-full h-full flex items-center justify-center text-muted-foreground/20"><Icon name="Image" size={40} /></div>
+                    }
+                    <div className="absolute top-2 left-2 bg-primary text-white text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                      #{idx + 1}
+                    </div>
                   </div>
+                  <div className="p-3">
+                    <div className="text-xs text-muted-foreground mb-0.5">{p.seller.shop_name}</div>
+                    <div className="font-bold text-sm leading-tight line-clamp-2 mb-1">{p.title}</div>
+                    <div className="font-black text-primary">{p.price.toLocaleString('ru')} ₽</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">⭐ {p.rating} · {p.reviews_count} отзывов</div>
+                  </div>
+                </button>
+              );
+            })}
+            {topProducts.length === 0 && Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-white border-2 border-border rounded-2xl overflow-hidden animate-pulse">
+                <div className="aspect-square bg-secondary" />
+                <div className="p-3 space-y-2">
+                  <div className="h-3 bg-secondary rounded w-2/3" />
+                  <div className="h-4 bg-secondary rounded w-full" />
+                  <div className="h-4 bg-secondary rounded w-1/2" />
                 </div>
-                <div className="p-3">
-                  <div className="text-xs text-muted-foreground mb-0.5">{p.seller}</div>
-                  <div className="font-bold text-sm leading-tight line-clamp-2 mb-1">{p.name}</div>
-                  <div className="font-black text-primary">{p.price.toLocaleString('ru')} ₽</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">⭐ {p.rating} · {p.reviews} продаж</div>
-                </div>
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -259,20 +289,39 @@ export default function HomePage({ onNavigate }: HomePageProps) {
             <h2 className="font-black text-lg">🏪 Магазины</h2>
           </div>
           <div className="space-y-2">
-            {SELLERS.map(s => (
-              <div key={s.id} className="bg-white border-2 border-border rounded-2xl p-3 flex items-center gap-3 hover:border-primary/40 transition-colors cursor-pointer">
-                <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0">
-                  {s.avatar}
+            {sellers.map(s => {
+              const initials = s.shop_name.substring(0, 2).toUpperCase();
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => onNavigate('seller', { id: String(s.id) })}
+                  className="bg-white border-2 border-border rounded-2xl p-3 flex items-center gap-3 hover:border-primary/40 transition-colors cursor-pointer"
+                >
+                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0 overflow-hidden">
+                    {s.logo
+                      ? <img src={s.logo} alt={s.shop_name} className="w-full h-full object-cover" />
+                      : initials
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm truncate">{s.shop_name}</div>
+                    <div className="text-xs text-muted-foreground">{s.city ? `${s.city} · ` : ''}{s.total_sales} продаж</div>
+                  </div>
+                  <Icon name="ChevronRight" size={14} className="text-muted-foreground flex-shrink-0" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm truncate">{s.name}</div>
-                  <div className="text-xs text-muted-foreground">⭐ {s.rating} · {s.sales} продаж</div>
+              );
+            })}
+            {sellers.length === 0 && Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="bg-white border-2 border-border rounded-2xl p-3 flex items-center gap-3 animate-pulse">
+                <div className="w-10 h-10 bg-secondary rounded-xl flex-shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <div className="h-3.5 bg-secondary rounded w-2/3" />
+                  <div className="h-3 bg-secondary rounded w-1/2" />
                 </div>
-                <Icon name="ChevronRight" size={14} className="text-muted-foreground flex-shrink-0" />
               </div>
             ))}
             <button
-              onClick={() => onNavigate('catalog')}
+              onClick={() => onNavigate('stores')}
               className="w-full py-2.5 border-2 border-dashed border-primary/30 text-primary text-xs font-bold rounded-2xl hover:bg-primary/5 transition-colors"
             >
               Все магазины →

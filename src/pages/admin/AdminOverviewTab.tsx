@@ -1,11 +1,5 @@
 import Icon from '@/components/ui/icon';
-import { MOCK_SALES, SellerProfile, User } from '@/data/auth';
-
-const SALE_STATUS = {
-  completed:  { label: 'Завершена',  cls: 'bg-green-100 text-green-700' },
-  cancelled:  { label: 'Отменена',   cls: 'bg-red-100 text-red-700'     },
-  processing: { label: 'В процессе', cls: 'bg-yellow-100 text-yellow-700'},
-};
+import { SellerProfile, User } from '@/data/auth';
 
 function StatCard({ emoji, label, value, sub }: { emoji: string; label: string; value: string; sub?: string }) {
   return (
@@ -27,7 +21,7 @@ interface AdminOverviewTabProps {
 
 export default function AdminOverviewTab({ shops, buyers, onOpenShop, onGoToShopsTab }: AdminOverviewTabProps) {
   const totalRevenue = shops.reduce((a, s) => a + s.totalRevenue, 0);
-  const totalSales   = MOCK_SALES.length;
+  const totalSales   = shops.reduce((a, s) => a + s.totalSales, 0);
   const buyers_only  = buyers.filter(u => u.role !== 'moderator' && u.role !== 'seller');
 
   return (
@@ -40,36 +34,45 @@ export default function AdminOverviewTab({ shops, buyers, onOpenShop, onGoToShop
       </div>
 
       <div className="bg-white border-2 border-border rounded-2xl p-5">
-        <h3 className="font-black mb-4 flex items-center gap-2"><span>📋</span> Последние продажи</h3>
+        <h3 className="font-black mb-4 flex items-center gap-2"><span>📋</span> Статистика магазинов</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-muted-foreground uppercase tracking-wide">
-                <th className="text-left pb-3 pr-4">Товар</th>
                 <th className="text-left pb-3 pr-4">Магазин</th>
-                <th className="text-left pb-3 pr-4">Покупатель</th>
-                <th className="text-left pb-3 pr-4">Сумма</th>
+                <th className="text-left pb-3 pr-4">Город</th>
+                <th className="text-left pb-3 pr-4">Продаж</th>
+                <th className="text-left pb-3 pr-4">Выручка</th>
                 <th className="text-left pb-3">Статус</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {MOCK_SALES.slice(0, 6).map(sale => {
-                const shop = shops.find(s => s.id === sale.shopId);
-                return (
-                  <tr key={sale.id} className="hover:bg-secondary/50 transition-colors">
-                    <td className="py-2.5 pr-4">
-                      <div className="font-semibold">{sale.productName}</div>
-                      <div className="text-xs text-muted-foreground font-mono">{sale.article}</div>
-                    </td>
-                    <td className="py-2.5 pr-4 text-muted-foreground">{shop?.shopName || '—'}</td>
-                    <td className="py-2.5 pr-4 text-muted-foreground">{sale.buyerName}</td>
-                    <td className="py-2.5 pr-4 font-black text-primary">{sale.amount.toLocaleString('ru')} ₽</td>
-                    <td className="py-2.5">
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SALE_STATUS[sale.status].cls}`}>{SALE_STATUS[sale.status].label}</span>
-                    </td>
-                  </tr>
-                );
-              })}
+              {shops.slice(0, 6).map(shop => (
+                <tr key={shop.id} className="hover:bg-secondary/50 transition-colors cursor-pointer" onClick={() => { onGoToShopsTab(); onOpenShop(shop); }}>
+                  <td className="py-2.5 pr-4">
+                    <div className="font-semibold">{shop.shopName}</div>
+                    <div className="text-xs text-muted-foreground font-mono">{shop.sellerCode}</div>
+                  </td>
+                  <td className="py-2.5 pr-4 text-muted-foreground">{shop.city || '—'}</td>
+                  <td className="py-2.5 pr-4 font-bold">{shop.totalSales}</td>
+                  <td className="py-2.5 pr-4 font-black text-primary">{shop.totalRevenue.toLocaleString('ru')} ₽</td>
+                  <td className="py-2.5">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      shop.status === 'approved' ? 'bg-green-100 text-green-700' :
+                      shop.status === 'pending'  ? 'bg-yellow-100 text-yellow-700' :
+                      shop.status === 'blocked'  ? 'bg-gray-100 text-gray-700' :
+                                                   'bg-red-100 text-red-700'
+                    }`}>
+                      {shop.status === 'approved' ? 'Одобрен' : shop.status === 'pending' ? 'На проверке' : shop.status === 'blocked' ? 'Заблокирован' : 'Отклонён'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {shops.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">Нет данных</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

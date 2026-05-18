@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/icon';
 import { useAuth } from '@/context/AuthContext';
-import { generateSellerCode } from '@/data/auth';
+import { sellersApi } from '@/api/products';
 
 interface SellerRegisterPageProps {
   onNavigate: (page: string) => void;
@@ -37,7 +37,7 @@ export default function SellerRegisterPage({ onNavigate }: SellerRegisterPagePro
   const [docs, setDocs] = useState<DocFile[]>(DOC_LIST.map(d => ({ ...d, file: null, uploaded: false })));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [shopCode] = useState(generateSellerCode());
+  const [submitError, setSubmitError] = useState('');
 
   if (!user) {
     return (
@@ -70,9 +70,22 @@ export default function SellerRegisterPage({ onNavigate }: SellerRegisterPagePro
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setStep('done');
-    setSubmitting(false);
+    setSubmitError('');
+    try {
+      await sellersApi.register({
+        shop_name: shopName.trim(),
+        description: shopDesc.trim() || undefined,
+        contact_phone: contactPhone.trim() || undefined,
+        city: city.trim() || undefined,
+        address: address.trim() || undefined,
+      });
+      setStep('done');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Ошибка при отправке заявки';
+      setSubmitError(msg);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const STEPS = [
@@ -119,8 +132,8 @@ export default function SellerRegisterPage({ onNavigate }: SellerRegisterPagePro
           <div className="bg-orange-50 border-2 border-primary/20 rounded-2xl p-4 flex items-start gap-3">
             <span className="text-xl flex-shrink-0">💡</span>
             <div className="text-sm text-muted-foreground">
-              После проверки документов модератором ваш магазин получит код <span className="font-black text-primary">{shopCode}</span>.
-              Этот код будет уникальным идентификатором вашего магазина.
+              После проверки документов модератором вашему магазину присвоят уникальный код.
+              Регистрация бесплатна — без скрытых платежей.
             </div>
           </div>
 
@@ -222,19 +235,26 @@ export default function SellerRegisterPage({ onNavigate }: SellerRegisterPagePro
           {!requiredDocsUploaded && (
             <p className="text-xs text-muted-foreground text-center">Загрузите все обязательные документы</p>
           )}
+          {submitError && (
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-3 text-xs text-red-700 text-center">
+              {submitError}
+            </div>
+          )}
         </div>
       )}
 
       {/* Step 3: Done */}
       {step === 'done' && (
         <div className="text-center py-8 animate-fade-in">
-          <div className="text-6xl mb-4 animate-bounce-light">🎉</div>
+          <div className="text-6xl mb-4">🎉</div>
           <h2 className="text-2xl font-black mb-2">Заявка отправлена!</h2>
-          <p className="text-muted-foreground mb-4">Модераторы проверят ваши документы в течение 1–2 рабочих дней.</p>
-          <div className="bg-primary/10 border-2 border-primary/30 rounded-2xl p-5 mb-6 inline-block">
-            <p className="text-xs text-muted-foreground mb-1">Код вашего магазина</p>
-            <p className="text-3xl font-black text-primary">{shopCode}</p>
-            <p className="text-xs text-muted-foreground mt-1">Сохраните его для отслеживания заявки</p>
+          <p className="text-muted-foreground mb-4">
+            Модераторы проверят ваши данные в течение 1–2 рабочих дней.<br />
+            Статус заявки можно отслеживать в личном кабинете.
+          </p>
+          <div className="bg-primary/10 border-2 border-primary/30 rounded-2xl p-5 mb-6">
+            <p className="text-sm font-bold text-primary mb-1">Магазин «{shopName}»</p>
+            <p className="text-xs text-muted-foreground">Код будет присвоен после одобрения модератором</p>
           </div>
           <div className="flex gap-3 justify-center">
             <button onClick={() => onNavigate('profile')} className="px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all">

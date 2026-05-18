@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import Icon from '@/components/ui/icon';
 import { useAuth } from '@/context/AuthContext';
-import { UserRole } from '@/data/auth';
+
+type UserRole = 'buyer' | 'seller' | 'moderator';
 
 interface AuthPageProps {
   onSuccess: (role: UserRole) => void;
@@ -24,14 +25,13 @@ function formatPhone(raw: string): string {
 }
 
 export default function AuthPage({ onSuccess, onClose }: AuthPageProps) {
-  const { login, register, isLoading } = useAuth();
+  const { login, register, sendOtp, isLoading } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [otp, setOtp] = useState(['', '', '', '']);
   const [error, setError] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
   const otpRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
@@ -40,9 +40,8 @@ export default function AuthPage({ onSuccess, onClose }: AuthPageProps) {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 11) { setError('Введите полный номер телефона'); return; }
 
-    // Имитируем отправку SMS
-    await new Promise(r => setTimeout(r, 600));
-    setOtpSent(true);
+    const ok = await sendOtp(digits);
+    if (!ok) { setError('Не удалось отправить код. Попробуйте снова.'); return; }
     if (mode === 'register') {
       setStep('register_name');
     } else {
@@ -193,9 +192,10 @@ export default function AuthPage({ onSuccess, onClose }: AuthPageProps) {
         {step === 'otp' && (
           <form onSubmit={handleOtpSubmit} className="space-y-6">
             <div>
-              <label className="text-xs font-bold text-muted-foreground mb-4 block uppercase tracking-wide text-center">
+              <label className="text-xs font-bold text-muted-foreground mb-2 block uppercase tracking-wide text-center">
                 Введите 4-значный код из SMS
               </label>
+              <p className="text-xs text-center text-primary/70 font-medium mb-3">Тестовый код: 1234</p>
               <div className="flex gap-3 justify-center">
                 {otp.map((digit, i) => (
                   <input

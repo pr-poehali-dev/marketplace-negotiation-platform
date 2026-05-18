@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import ProductCard from '@/components/ProductCard';
-import { PRODUCTS, CATEGORIES, Product } from '@/data/products';
+import { productsApi, Product, Category } from '@/api/products';
 
 interface CatalogPageProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -18,6 +18,10 @@ const SORT_OPTIONS = [
 ];
 
 export default function CatalogPage({ onNavigate, onAddToCart, initialCategory = 'Все', initialSearch = '' }: CatalogPageProps) {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [search, setSearch] = useState(initialSearch);
   const [sort, setSort] = useState('popular');
@@ -25,15 +29,28 @@ export default function CatalogPage({ onNavigate, onAddToCart, initialCategory =
   const [priceMax, setPriceMax] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      productsApi.list(),
+      productsApi.categories(),
+    ]).then(([prodRes, catRes]) => {
+      setProducts(prodRes.products);
+      setCategories(catRes.categories);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  const categoryNames = useMemo(() => ['Все', ...categories.map(c => c.name)], [categories]);
+
   const filtered = useMemo(() => {
-    let items = [...PRODUCTS];
+    let items = [...products];
     if (selectedCategory !== 'Все') {
-      items = items.filter(p => p.category === selectedCategory);
+      items = items.filter(p => p.category.name === selectedCategory);
     }
     if (search) {
       items = items.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.seller.toLowerCase().includes(search.toLowerCase())
+        p.title.toLowerCase().includes(search.toLowerCase()) ||
+        p.seller.shop_name.toLowerCase().includes(search.toLowerCase())
       );
     }
     if (priceMin) items = items.filter(p => p.price >= Number(priceMin));
@@ -44,13 +61,13 @@ export default function CatalogPage({ onNavigate, onAddToCart, initialCategory =
     else if (sort === 'rating') items.sort((a, b) => b.rating - a.rating);
 
     return items;
-  }, [selectedCategory, search, sort, priceMin, priceMax]);
+  }, [products, selectedCategory, search, sort, priceMin, priceMax]);
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Каталог</h1>
-        <span className="text-sm text-muted-foreground">{filtered.length} товаров</span>
+        <span className="text-sm text-muted-foreground">{loading ? '...' : `${filtered.length} товаров`}</span>
       </div>
 
       {/* Search + Sort */}
@@ -119,7 +136,7 @@ export default function CatalogPage({ onNavigate, onAddToCart, initialCategory =
 
       {/* Categories */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-8 scrollbar-hide">
-        {CATEGORIES.map(cat => (
+        {categoryNames.map(cat => (
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
@@ -134,8 +151,24 @@ export default function CatalogPage({ onNavigate, onAddToCart, initialCategory =
         ))}
       </div>
 
+      {/* Loading */}
+      {loading && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-border overflow-hidden animate-pulse">
+              <div className="aspect-square bg-secondary" />
+              <div className="p-4 space-y-2">
+                <div className="h-4 bg-secondary rounded w-3/4" />
+                <div className="h-3 bg-secondary rounded w-1/2" />
+                <div className="h-4 bg-secondary rounded w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Grid */}
-      {filtered.length > 0 ? (
+      {!loading && filtered.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {filtered.map(product => (
             <ProductCard
@@ -146,7 +179,9 @@ export default function CatalogPage({ onNavigate, onAddToCart, initialCategory =
             />
           ))}
         </div>
-      ) : (
+      )}
+
+      {!loading && filtered.length === 0 && (
         <div className="text-center py-20">
           <Icon name="SearchX" size={48} className="mx-auto mb-4 text-muted-foreground/40" />
           <h3 className="font-semibold mb-1">Ничего не найдено</h3>

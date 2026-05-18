@@ -1,72 +1,96 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
-import { User, UserRole, MOCK_USERS, generateBuyerCode } from '@/data/auth';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { authApi, UserProfile } from '@/api/auth';
+import { api } from '@/api/client';
+
+type UserRole = 'buyer' | 'seller' | 'moderator';
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
   login: (phone: string, otp: string) => Promise<{ success: boolean; role?: UserRole }>;
   register: (phone: string, name: string, otp: string) => Promise<boolean>;
+  sendOtp: (phone: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Единственный номер с доступом модератора
-  const MODERATOR_PHONE = '79248985212';
-
-  const login = async (phone: string, _otp: string): Promise<{ success: boolean; role?: UserRole }> => {
-    setIsLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-
-    // Нормализуем: убираем всё кроме цифр
-    const normalized = phone.replace(/\D/g, '');
-
-    // Если пытается войти как модератор, но номер не совпадает — отказ
-    const found = MOCK_USERS.find(u => u.phone.replace(/\D/g, '') === normalized);
-
-    if (found) {
-      // Дополнительная защита: роль модератора только для конкретного номера
-      if (found.role === 'moderator' && normalized !== MODERATOR_PHONE) {
-        setIsLoading(false);
-        return { success: false };
-      }
-      setUser(found);
+  useEffect(() => {
+    const token = api.getToken();
+    if (token) {
+      authApi.me()
+        .then(u => setUser(u))
+        .catch(() => api.clearToken())
+        .finally(() => setIsLoading(false));
+    } else {
       setIsLoading(false);
-      return { success: true, role: found.role };
     }
+  }, []);
 
-    setIsLoading(false);
-    return { success: false };
+  const sendOtp = async (phone: string): Promise<boolean> => {
+    try {
+      const normalized = phone.replace(/\D/g, '');
+      await authApi.sendOtp(normalized);
+      return true;
+    } catch {
+      return false;
+    }
   };
 
-  const register = async (phone: string, name: string, _otp: string): Promise<boolean> => {
+  const login = async (phone: string, otp: string): Promise<{ success: boolean; role?: UserRole }> => {
     setIsLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-
-    const newUser: User = {
-      id: `u_${Date.now()}`,
-      phone,
-      name,
-      role: 'buyer',
-      buyerCode: generateBuyerCode(),
-      avatar: name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase(),
-      bonusPoints: 200, // бонус за первую регистрацию
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-
-    setUser(newUser);
-    setIsLoading(false);
-    return true;
+    try {
+      const normalized = phone.replace(/\D/g, '');
+      const res = await authApi.login(normalized, otp);
+      api.setToken(res.token);
+      const me = await authApi.me();
+      setUser(me);
+      return { success: true, role: me.role };
+    } catch {
+      return { success: false };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const logout = () => setUser(null);
+  const register = async (phone: string, name: string, otp: string): Promise<boolean> => {
+    setIsLoading(true);
+    try {
+      const normalized = phone.replace(/\D/g, '');
+      const res = await authApi.register(normalized, name, otp);
+      api.setToken(res.token);
+      const me = await authApi.me();
+      setUser(me);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = () => {
+    authApi.logout().catch(() => {});
+    api.clearToken();
+    setUser(null);
+  };
+
+  const refreshUser = async () => {
+    try {
+      const me = await authApi.me();
+      setUser(me);
+    } catch {
+      logout();
+    }
+  };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, sendOtp, logout, isLoading, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

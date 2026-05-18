@@ -23,8 +23,9 @@ import SellerRegisterPage from '@/pages/SellerRegisterPage';
 import ModeratorPage from '@/pages/ModeratorPage';
 import AdminPage from '@/pages/AdminPage';
 import NotificationToast from '@/components/NotificationToast';
-import { Product } from '@/data/products';
-import { UserRole } from '@/data/auth';
+import { Product } from '@/api/products';
+
+type UserRole = 'buyer' | 'seller' | 'moderator';
 
 interface CartItem extends Product {
   quantity: number;
@@ -107,9 +108,7 @@ function AppInner() {
       case 'chat':
         return (
           <ChatPage
-            initialSellerId={params.sellerId ? Number(params.sellerId) : undefined}
-            offerPrice={params.offerPrice}
-            productName={params.productName}
+            initialNegotiationId={params.negotiationId ? Number(params.negotiationId) : undefined}
             onNavigate={navigate}
           />
         );

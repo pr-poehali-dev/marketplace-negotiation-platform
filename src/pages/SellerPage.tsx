@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
 import ProductCard from '@/components/ProductCard';
-import { SELLERS, PRODUCTS, Product } from '@/data/products';
+import { productsApi, sellersApi, Product, SellerProfile } from '@/api/products';
 
 interface SellerPageProps {
   sellerId: number;
@@ -9,44 +10,84 @@ interface SellerPageProps {
 }
 
 export default function SellerPage({ sellerId, onNavigate, onAddToCart }: SellerPageProps) {
-  const seller = SELLERS.find(s => s.id === sellerId) || SELLERS[0];
-  const sellerProducts = PRODUCTS.filter(p => p.sellerId === seller.id);
+  const [seller, setSeller] = useState<SellerProfile | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      sellersApi.get(sellerId),
+      productsApi.list({ seller_id: sellerId }),
+    ]).then(([sellerRes, prodRes]) => {
+      setSeller(sellerRes);
+      setProducts(prodRes.products);
+    }).catch(() => {}).finally(() => setLoading(false));
+  }, [sellerId]);
+
+  if (loading) {
+    return (
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8 animate-pulse">
+        <div className="bg-white border border-border rounded-3xl p-8 mb-8">
+          <div className="flex gap-6">
+            <div className="w-20 h-20 bg-secondary rounded-2xl flex-shrink-0" />
+            <div className="flex-1 space-y-3">
+              <div className="h-6 bg-secondary rounded w-1/3" />
+              <div className="h-4 bg-secondary rounded w-2/3" />
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!seller) {
+    return (
+      <main className="max-w-xl mx-auto px-4 py-20 text-center">
+        <Icon name="Store" size={48} className="mx-auto mb-4 text-muted-foreground/40" />
+        <h2 className="text-xl font-bold mb-2">Магазин не найден</h2>
+        <button onClick={() => onNavigate('catalog')} className="px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm hover:opacity-90 transition-all">
+          В каталог
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       {/* Profile card */}
       <div className="bg-white border border-border rounded-3xl p-8 mb-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-          <div className="w-20 h-20 bg-foreground text-background rounded-2xl flex items-center justify-center text-2xl font-bold flex-shrink-0">
-            {seller.avatar}
+          <div className="w-20 h-20 bg-foreground text-background rounded-2xl flex items-center justify-center text-2xl font-bold flex-shrink-0 overflow-hidden">
+            {seller.logo
+              ? <img src={seller.logo} alt={seller.shop_name} className="w-full h-full object-cover" />
+              : seller.shop_name.slice(0, 2).toUpperCase()
+            }
           </div>
           <div className="flex-1">
-            <h1 className="text-2xl font-bold mb-1">{seller.name}</h1>
+            <h1 className="text-2xl font-bold mb-1">{seller.shop_name}</h1>
             <p className="text-muted-foreground text-sm mb-3">{seller.description}</p>
             <div className="flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-1.5">
-                <Icon name="Star" size={14} className="fill-amber-400 text-amber-400" />
-                <span className="font-semibold">{seller.rating}</span>
-                <span className="text-muted-foreground">рейтинг</span>
-              </div>
-              <div className="flex items-center gap-1.5">
                 <Icon name="ShoppingBag" size={14} className="text-muted-foreground" />
-                <span className="font-semibold">{seller.sales}</span>
+                <span className="font-semibold">{seller.total_sales}</span>
                 <span className="text-muted-foreground">продаж</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Icon name="Package" size={14} className="text-muted-foreground" />
-                <span className="font-semibold">{seller.products}</span>
+                <span className="font-semibold">{seller.products_count}</span>
                 <span className="text-muted-foreground">товаров</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Icon name="Calendar" size={14} className="text-muted-foreground" />
-                <span className="text-muted-foreground">с {seller.since} года</span>
-              </div>
+              {seller.city && (
+                <div className="flex items-center gap-1.5">
+                  <Icon name="MapPin" size={14} className="text-muted-foreground" />
+                  <span className="text-muted-foreground">{seller.city}</span>
+                </div>
+              )}
             </div>
           </div>
           <button
-            onClick={() => onNavigate('chat', { sellerId: String(seller.id) })}
+            onClick={() => onNavigate('chat')}
             className="flex-shrink-0 px-5 py-2.5 bg-foreground text-background rounded-xl font-medium text-sm hover:bg-foreground/80 transition-colors flex items-center gap-2"
           >
             <Icon name="MessageCircle" size={16} />
@@ -72,17 +113,24 @@ export default function SellerPage({ sellerId, onNavigate, onAddToCart }: Seller
       </div>
 
       {/* Products */}
-      <h2 className="text-xl font-semibold mb-4">Товары продавца</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {sellerProducts.map(product => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            onNavigate={onNavigate}
-            onAddToCart={onAddToCart}
-          />
-        ))}
-      </div>
+      <h2 className="text-xl font-semibold mb-4">Товары магазина</h2>
+      {products.length > 0 ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {products.map(product => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onNavigate={onNavigate}
+              onAddToCart={onAddToCart}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12 text-muted-foreground">
+          <Icon name="Package" size={40} className="mx-auto mb-3 opacity-30" />
+          <p className="text-sm">У этого магазина пока нет товаров</p>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Get me without token (root)",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401,
+      "expectedBody": {"error": "No token"},
+      "bodyMatcher": "partial"
+    }
+  ]
+}

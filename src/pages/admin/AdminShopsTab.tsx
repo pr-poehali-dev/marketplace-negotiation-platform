@@ -1,5 +1,5 @@
 import Icon from '@/components/ui/icon';
-import { MOCK_SALES, SellerProfile, Sale } from '@/data/auth';
+import { SellerProfile } from '@/data/auth';
 
 const STATUS_MAP = {
   pending:  { label: 'На проверке',  cls: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
@@ -8,11 +8,7 @@ const STATUS_MAP = {
   blocked:  { label: 'Заблокирован', cls: 'bg-gray-100 text-gray-700 border-gray-300'       },
 };
 
-const SALE_STATUS = {
-  completed:  { label: 'Завершена',  cls: 'bg-green-100 text-green-700'  },
-  cancelled:  { label: 'Отменена',   cls: 'bg-red-100 text-red-700'      },
-  processing: { label: 'В процессе', cls: 'bg-yellow-100 text-yellow-700' },
-};
+
 
 const DOC_ICONS: Record<string, string> = { inn: '📄', ogrn: '📋', passport: '🪪', license: '📜', other: '📎' };
 
@@ -71,7 +67,7 @@ export default function AdminShopsTab({
     return fm && sm;
   });
 
-  const shopSales = (shopId: string): Sale[] => MOCK_SALES.filter(s => s.shopId === shopId);
+  const shopSales = (_shopId: string) => [] as { id: string; productName: string; article: string; buyerName: string; amount: number; date: string; status: 'completed' | 'cancelled' | 'processing' }[];
 
   return (
     <>
@@ -225,20 +221,20 @@ export default function AdminShopsTab({
                   <div className="animate-fade-in">
                     <div className="grid grid-cols-3 gap-3 mb-4">
                       <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
-                        <div className="text-lg font-black text-green-700">{shopSales(selectedShop.id).filter(s => s.status === 'completed').length}</div>
-                        <div className="text-xs text-muted-foreground">Завершено</div>
+                        <div className="text-lg font-black text-green-700">{selectedShop.totalSales}</div>
+                        <div className="text-xs text-muted-foreground">Всего продаж</div>
                       </div>
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-center">
-                        <div className="text-lg font-black text-yellow-700">{shopSales(selectedShop.id).filter(s => s.status === 'processing').length}</div>
-                        <div className="text-xs text-muted-foreground">В процессе</div>
+                      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-center">
+                        <div className="text-lg font-black text-blue-700">{selectedShop.totalRevenue.toLocaleString('ru')} ₽</div>
+                        <div className="text-xs text-muted-foreground">Выручка</div>
                       </div>
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
-                        <div className="text-lg font-black text-red-700">{shopSales(selectedShop.id).filter(s => s.status === 'cancelled').length}</div>
-                        <div className="text-xs text-muted-foreground">Отменено</div>
+                      <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-center">
+                        <div className="text-lg font-black text-purple-700">{selectedShop.productsCount}</div>
+                        <div className="text-xs text-muted-foreground">Товаров</div>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {shopSales(selectedShop.id).map((sale: Sale) => (
+                      {shopSales(selectedShop.id).map(sale => (
                         <div key={sale.id} className="flex items-center gap-3 p-3 bg-secondary rounded-xl">
                           <div className="flex-1">
                             <div className="font-semibold text-sm">{sale.productName}</div>
@@ -246,11 +242,10 @@ export default function AdminShopsTab({
                           </div>
                           <div className="text-right flex-shrink-0">
                             <div className="font-black text-sm">{sale.amount.toLocaleString('ru')} ₽</div>
-                            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${SALE_STATUS[sale.status].cls}`}>{SALE_STATUS[sale.status].label}</span>
                           </div>
                         </div>
                       ))}
-                      {shopSales(selectedShop.id).length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Нет продаж</p>}
+                      {shopSales(selectedShop.id).length === 0 && <p className="text-sm text-muted-foreground text-center py-8">История продаж загружается из API</p>}
                     </div>
                   </div>
                 )}

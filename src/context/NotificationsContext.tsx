@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { MOCK_SELLER_PROFILES, SellerProfile } from '@/data/auth';
 import { useAuth } from '@/context/AuthContext';
 
 export interface Notification {
@@ -24,31 +23,13 @@ interface NotificationsContextType {
 
 const NotificationsContext = createContext<NotificationsContextType | null>(null);
 
-// Генерируем начальные уведомления из pending заявок
-function buildInitialNotifications(): Notification[] {
-  return MOCK_SELLER_PROFILES.filter(s => s.status === 'pending').map((s, i) => ({
-    id: `init-${s.id}`,
-    type: 'new_shop' as const,
-    title: 'Новая заявка на магазин',
-    message: `«${s.shopName}» (${s.sellerCode}) ожидает проверки документов`,
-    shopId: s.id,
-    shopName: s.shopName,
-    createdAt: new Date(Date.now() - (i + 1) * 3 * 60 * 1000),
-    read: false,
-  }));
-}
-
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // Инициализируем уведомления когда модератор входит
+  // Сбрасываем уведомления при смене пользователя
   useEffect(() => {
-    if (user?.role === 'moderator') {
-      setNotifications(buildInitialNotifications());
-    } else {
-      setNotifications([]);
-    }
+    setNotifications([]);
   }, [user?.id, user?.role]);
 
   // Симулируем новую заявку каждые 30 секунд (только для модератора)

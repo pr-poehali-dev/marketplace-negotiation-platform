@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import Icon from '@/components/ui/icon';
-import { Product } from '@/data/products';
+import { Product } from '@/api/products';
 
 interface CartItem extends Product {
   quantity: number;
@@ -87,16 +87,22 @@ export default function CartPage({ cartItems, onUpdateCart, onNavigate }: CartPa
                 className="w-20 h-20 bg-secondary rounded-xl overflow-hidden flex-shrink-0 cursor-pointer"
                 onClick={() => onNavigate('product', { id: String(item.id) })}
               >
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                {item.images?.[0] ? (
+                  <img src={item.images[0]} alt={item.title} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground/30">
+                    <Icon name="Image" size={24} />
+                  </div>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <button
                   onClick={() => onNavigate('product', { id: String(item.id) })}
                   className="font-medium text-sm mb-1 text-left hover:text-muted-foreground transition-colors line-clamp-2"
                 >
-                  {item.name}
+                  {item.title}
                 </button>
-                <p className="text-xs text-muted-foreground mb-3">{item.seller}</p>
+                <p className="text-xs text-muted-foreground mb-3">{item.seller.shop_name}</p>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center border border-border rounded-lg overflow-hidden">
                     <button onClick={() => updateQuantity(item.id, -1)} className="px-2.5 py-1.5 hover:bg-secondary transition-colors">

@@ -1,9 +1,8 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Icon from '@/components/ui/icon';
-import { PRODUCTS } from '@/data/products';
-import { MOCK_SELLER_PROFILES } from '@/data/auth';
 import { useAuth } from '@/context/AuthContext';
 import QRCard from '@/components/QRCard';
+import { productsApi, Product } from '@/api/products';
 
 interface ProfilePageProps {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -16,22 +15,6 @@ const ORDERS = [
   { id: '#МК-91005', date: '14 мая 2026', product: 'Кожаный кошелёк Slim', article: 'ОДЕ-00002', price: 3490, status: 'processing', statusLabel: 'В обработке' },
 ];
 
-interface ListingDraft {
-  id: number;
-  name: string;
-  price: number;
-  description: string;
-  image: string;
-  article: string;
-  inStock: boolean;
-  category: string;
-}
-
-const MY_LISTINGS_DEFAULT: ListingDraft[] = PRODUCTS.slice(0, 2).map(p => ({
-  id: p.id, name: p.name, price: p.price, description: p.description,
-  image: p.image, article: p.article, inStock: p.inStock, category: p.category,
-}));
-
 const STATUS_COLORS: Record<string, string> = {
   delivered: 'bg-green-100 text-green-700',
   processing: 'bg-amber-100 text-amber-700',
@@ -42,29 +25,22 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'orders' | 'listings' | 'qr' | 'settings'>('orders');
 
-  /* ── listing editor ── */
-  const [listings, setListings] = useState<ListingDraft[]>(MY_LISTINGS_DEFAULT);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [editDraft, setEditDraft] = useState<ListingDraft | null>(null);
+  /* ── listings (seller products) ── */
+  const [listings, setListings] = useState<Product[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-  const openEdit = (l: ListingDraft) => { setEditDraft({ ...l }); setEditId(l.id); };
-  const closeEdit = () => { setEditId(null); setEditDraft(null); };
-  const saveEdit = () => {
-    if (!editDraft) return;
-    setListings(prev => prev.map(l => l.id === editDraft.id ? editDraft : l));
-    closeEdit();
-  };
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editDraft) return;
-    const reader = new FileReader();
-    reader.onload = ev => setEditDraft(d => d ? { ...d, image: ev.target?.result as string } : d);
-    reader.readAsDataURL(file);
-    e.target.value = '';
-  };
+  const sellerProfile = user?.seller_profile ?? null;
 
-  const sellerProfile = user ? MOCK_SELLER_PROFILES.find(s => s.userId === user.id) : null;
+  /* загружаем товары продавца когда открыта вкладка "Товары" */
+  useEffect(() => {
+    if (activeTab !== 'listings' || !sellerProfile) return;
+    setListingsLoading(true);
+    productsApi.list({ seller_id: sellerProfile.id })
+      .then(res => setListings(res.products))
+      .catch(err => console.error('listings load error', err))
+      .finally(() => setListingsLoading(false));
+  }, [activeTab, sellerProfile]);
 
   if (!user) {
     return (
@@ -100,8 +76,11 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
       {/* User card */}
       <div className="bg-white border-2 border-border rounded-3xl p-6 mb-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-black flex-shrink-0 shadow-md shadow-primary/30">
-            {user.avatar}
+          <div className="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center text-xl font-black flex-shrink-0 shadow-md shadow-primary/30 overflow-hidden">
+            {user.avatar_url
+              ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+              : user.name.slice(0, 2).toUpperCase()
+            }
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -116,9 +95,8 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
             </div>
             <p className="text-muted-foreground text-sm">{user.phone}</p>
             <div className="flex items-center gap-4 mt-2 text-sm flex-wrap">
-              <span className="font-bold text-primary flex items-center gap-1">🎁 {user.bonusPoints} баллов</span>
-              <span className="text-muted-foreground font-mono text-xs bg-secondary px-2 py-0.5 rounded-lg">{user.buyerCode}</span>
-              {ORDERS.length > 0 && <span className="text-muted-foreground">{ORDERS.length} заказа</span>}
+              <span className="font-bold text-primary flex items-center gap-1">🎁 {user.bonus_points} баллов</span>
+              {user.orders_count > 0 && <span className="text-muted-foreground">{user.orders_count} заказа</span>}
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
@@ -136,15 +114,12 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
 
       {/* Seller profile status */}
       {sellerProfile && (
-        <div className={`border-2 rounded-2xl p-4 mb-6 flex items-center justify-between gap-3 ${SELLER_STATUS_MAP[sellerProfile.status].cls}`}>
+        <div className={`border-2 rounded-2xl p-4 mb-6 flex items-center justify-between gap-3 ${SELLER_STATUS_MAP[sellerProfile.status as keyof typeof SELLER_STATUS_MAP]?.cls || 'border-border'}`}>
           <div className="flex items-center gap-3">
             <span className="text-xl">{sellerProfile.status === 'approved' ? '✅' : sellerProfile.status === 'rejected' ? '❌' : '⏳'}</span>
             <div>
-              <p className="font-bold text-sm">Магазин «{sellerProfile.shopName}»</p>
-              <p className="text-xs opacity-80">Код: {sellerProfile.sellerCode} · Статус: {SELLER_STATUS_MAP[sellerProfile.status].label}</p>
-              {sellerProfile.rejectionReason && (
-                <p className="text-xs mt-0.5 opacity-80">{sellerProfile.rejectionReason}</p>
-              )}
+              <p className="font-bold text-sm">Магазин «{sellerProfile.shop_name}»</p>
+              <p className="text-xs opacity-80">Статус: {SELLER_STATUS_MAP[sellerProfile.status as keyof typeof SELLER_STATUS_MAP]?.label || sellerProfile.status}</p>
             </div>
           </div>
           {sellerProfile.status === 'rejected' && (
@@ -219,143 +194,123 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
       {/* Listings */}
       {activeTab === 'listings' && (
         <div className="animate-fade-in">
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={() => sellerProfile?.status === 'approved' ? onNavigate('catalog') : onNavigate('seller-register')}
-              className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-sm"
-            >
-              <Icon name="Plus" size={14} />
-              {sellerProfile?.status === 'approved' ? 'Добавить товар' : 'Зарегистрировать магазин'}
-            </button>
-          </div>
-          <div className="space-y-3">
-            {listings.map(product => (
-              <div key={product.id} className="bg-white border-2 border-border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/40 transition-colors">
-                <div className="w-14 h-14 bg-secondary rounded-xl overflow-hidden flex-shrink-0">
-                  <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm mb-0.5">{product.name}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                    <span className="font-mono bg-secondary px-1.5 py-0.5 rounded">{product.article}</span>
-                    <span className="text-xs">{product.category}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{product.description}</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="font-black">{product.price.toLocaleString('ru')} ₽</div>
-                  <div className={`text-xs mt-1 font-semibold ${product.inStock ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    {product.inStock ? 'В наличии' : 'Нет в наличии'}
-                  </div>
-                </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <button onClick={() => openEdit(product)} className="p-2 hover:bg-secondary rounded-xl transition-colors">
-                    <Icon name="Pencil" size={14} className="text-muted-foreground" />
-                  </button>
-                  <button onClick={() => setListings(prev => prev.filter(l => l.id !== product.id))} className="p-2 hover:bg-red-50 rounded-xl transition-colors">
-                    <Icon name="Trash2" size={14} className="text-red-400" />
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-muted-foreground">
+              {sellerProfile ? `Товары магазина «${sellerProfile.shop_name}»` : 'Нет активного магазина'}
+            </p>
+            {sellerProfile?.status === 'approved' && (
+              <button
+                onClick={() => onNavigate('catalog')}
+                className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-sm"
+              >
+                <Icon name="Plus" size={14} />
+                Добавить товар
+              </button>
+            )}
           </div>
 
-          {/* Edit modal */}
-          {editId !== null && editDraft && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between p-5 border-b-2 border-border">
-                  <h3 className="font-black">✏️ Редактировать товар</h3>
-                  <button onClick={closeEdit} className="p-2 hover:bg-secondary rounded-xl transition-colors">
-                    <Icon name="X" size={16} />
-                  </button>
-                </div>
-                <div className="p-5 space-y-4">
-                  {/* Фото */}
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1.5 block">Фото товара</label>
-                    <div className="flex gap-3 items-start">
-                      <div className="w-24 h-24 bg-secondary rounded-xl overflow-hidden flex-shrink-0 border-2 border-border">
-                        {editDraft.image
-                          ? <img src={editDraft.image} alt="" className="w-full h-full object-cover" />
-                          : <div className="w-full h-full flex items-center justify-center text-muted-foreground/40"><Icon name="Image" size={24} /></div>
-                        }
-                      </div>
-                      <div className="flex-1">
-                        <button
-                          onClick={() => photoInputRef.current?.click()}
-                          className="w-full py-2.5 border-2 border-dashed border-primary/40 rounded-xl text-xs font-bold text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
-                        >
-                          <Icon name="Upload" size={13} /> Загрузить фото
-                        </button>
-                        <p className="text-[10px] text-muted-foreground mt-1.5">JPG, PNG, WebP · до 5 МБ</p>
-                        <input ref={photoInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 block">Название</label>
-                    <input
-                      value={editDraft.name}
-                      onChange={e => setEditDraft(d => d ? { ...d, name: e.target.value } : d)}
-                      className="w-full px-3 py-2.5 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 block">Описание</label>
-                    <textarea
-                      value={editDraft.description}
-                      onChange={e => setEditDraft(d => d ? { ...d, description: e.target.value } : d)}
-                      rows={4}
-                      className="w-full px-3 py-2.5 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary resize-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 block">Цена, ₽</label>
-                      <input
-                        type="number"
-                        value={editDraft.price}
-                        onChange={e => setEditDraft(d => d ? { ...d, price: Number(e.target.value) } : d)}
-                        className="w-full px-3 py-2.5 border-2 border-border rounded-xl text-sm focus:outline-none focus:border-primary"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-1 block">Наличие</label>
-                      <div className="grid grid-cols-2 gap-1.5 h-[42px]">
-                        <button
-                          type="button"
-                          onClick={() => setEditDraft(d => d ? { ...d, inStock: true } : d)}
-                          className={`h-full rounded-xl text-xs font-bold border-2 transition-all ${editDraft.inStock ? 'bg-green-600 text-white border-green-600' : 'border-border text-foreground'}`}
-                        >
-                          В наличии
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditDraft(d => d ? { ...d, inStock: false } : d)}
-                          className={`h-full rounded-xl text-xs font-bold border-2 transition-all ${!editDraft.inStock ? 'bg-muted text-muted-foreground border-border' : 'border-border text-foreground'}`}
-                        >
-                          Нет
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 pt-2">
-                    <button onClick={closeEdit} className="flex-1 py-3 border-2 border-border rounded-xl text-sm font-bold text-muted-foreground hover:border-foreground/30">
-                      Отмена
-                    </button>
-                    <button onClick={saveEdit} className="flex-1 py-3 bg-primary text-white rounded-xl text-sm font-black hover:opacity-90">
-                      Сохранить
-                    </button>
-                  </div>
-                </div>
-              </div>
+          {/* Нет магазина */}
+          {!sellerProfile && (
+            <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl">
+              <Icon name="Store" size={40} className="mx-auto mb-3 text-muted-foreground/40" />
+              <p className="text-sm font-semibold mb-1">Магазин не зарегистрирован</p>
+              <p className="text-xs text-muted-foreground mb-4">Зарегистрируйте магазин, чтобы начать продавать</p>
+              <button
+                onClick={() => onNavigate('seller-register')}
+                className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all"
+              >
+                Открыть магазин
+              </button>
             </div>
           )}
+
+          {/* Магазин на проверке / отклонён */}
+          {sellerProfile && sellerProfile.status !== 'approved' && (
+            <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl">
+              <span className="text-4xl block mb-3">
+                {sellerProfile.status === 'pending' ? '⏳' : '❌'}
+              </span>
+              <p className="text-sm font-semibold mb-1">
+                {sellerProfile.status === 'pending' ? 'Магазин на проверке' : 'Магазин отклонён'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {sellerProfile.status === 'pending'
+                  ? 'Товары можно добавлять после одобрения модератором'
+                  : 'Обратитесь в поддержку или переподайте заявку'}
+              </p>
+            </div>
+          )}
+
+          {/* Список товаров */}
+          {sellerProfile?.status === 'approved' && (
+            <>
+              {listingsLoading && (
+                <div className="space-y-3">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="bg-white border-2 border-border rounded-2xl p-4 animate-pulse flex gap-4">
+                      <div className="w-14 h-14 bg-secondary rounded-xl flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-secondary rounded w-1/2" />
+                        <div className="h-3 bg-secondary rounded w-1/3" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!listingsLoading && listings.length === 0 && (
+                <div className="text-center py-12 border-2 border-dashed border-border rounded-2xl">
+                  <Icon name="Package" size={40} className="mx-auto mb-3 text-muted-foreground/40" />
+                  <p className="text-sm font-semibold mb-1">Товаров пока нет</p>
+                  <p className="text-xs text-muted-foreground mb-4">Добавьте первый товар в каталог</p>
+                  <button
+                    onClick={() => onNavigate('catalog')}
+                    className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:opacity-90 transition-all"
+                  >
+                    Добавить товар
+                  </button>
+                </div>
+              )}
+              {!listingsLoading && listings.length > 0 && (
+                <div className="space-y-3">
+                  {listings.map(product => {
+                    const image = product.images?.[0];
+                    return (
+                      <div
+                        key={product.id}
+                        className="bg-white border-2 border-border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/40 transition-colors cursor-pointer"
+                        onClick={() => onNavigate('product', { id: String(product.id) })}
+                      >
+                        <div className="w-14 h-14 bg-secondary rounded-xl overflow-hidden flex-shrink-0">
+                          {image
+                            ? <img src={image} alt={product.title} className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center text-muted-foreground/30"><Icon name="Image" size={20} /></div>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm mb-0.5 truncate">{product.title}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                            {product.article && <span className="font-mono bg-secondary px-1.5 py-0.5 rounded">{product.article}</span>}
+                            <span>{product.category.name}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{product.description}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="font-black">{product.price.toLocaleString('ru')} ₽</div>
+                          <div className={`text-xs mt-1 font-semibold ${product.in_stock ? 'text-green-600' : 'text-muted-foreground'}`}>
+                            {product.in_stock ? 'В наличии' : 'Нет в наличии'}
+                          </div>
+                        </div>
+                        <Icon name="ChevronRight" size={16} className="text-muted-foreground flex-shrink-0" />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Скрытый input для фото (оставляем для совместимости) */}
+          <input ref={photoInputRef} type="file" accept="image/*" className="hidden" />
         </div>
       )}
 
@@ -365,15 +320,15 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
           <p className="text-sm text-muted-foreground mb-5">Поделитесь QR-кодом с покупателями или друзьями — они попадут прямо в ваш профиль.</p>
           <div className="grid sm:grid-cols-2 gap-4">
             <QRCard
-              value={user.buyerCode}
+              value={String(user.id)}
               title="Мой код покупателя"
               label="Покажи код — получи скидку от продавца"
             />
             {sellerProfile?.status === 'approved' && (
               <QRCard
-                value={sellerProfile.sellerCode}
+                value={String(sellerProfile.id)}
                 title="QR-код магазина"
-                label={`Магазин «${sellerProfile.shopName}»`}
+                label={`Магазин «${sellerProfile.shop_name}»`}
               />
             )}
           </div>
@@ -394,7 +349,7 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
           {[
             { label: 'Имя', value: user.name, icon: 'User' },
             { label: 'Телефон', value: user.phone, icon: 'Phone' },
-            { label: 'Код покупателя', value: user.buyerCode, icon: 'Hash' },
+            { label: 'ID', value: String(user.id), icon: 'Hash' },
             { label: 'Роль', value: user.role === 'buyer' ? 'Покупатель' : user.role === 'seller' ? 'Продавец' : 'Модератор', icon: 'Shield' },
           ].map(field => (
             <div key={field.label} className="bg-white border-2 border-border rounded-2xl p-4 flex items-center gap-3 hover:border-primary/30 transition-colors">
@@ -403,7 +358,7 @@ export default function ProfilePage({ onNavigate, onShowAuth }: ProfilePageProps
                 <div className="text-xs text-muted-foreground mb-0.5">{field.label}</div>
                 <div className="text-sm font-semibold">{field.value}</div>
               </div>
-              {field.label !== 'Код покупателя' && field.label !== 'Роль' && (
+              {field.label !== 'ID' && field.label !== 'Роль' && (
                 <button className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
                   <Icon name="Pencil" size={13} className="text-muted-foreground" />
                 </button>

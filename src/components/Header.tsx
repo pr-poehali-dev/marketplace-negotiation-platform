@@ -96,8 +96,11 @@ export default function Header({ currentPage, onNavigate, cartCount, onShowAuth 
                 onClick={() => onNavigate('profile')}
                 className="hidden lg:flex items-center gap-2 pl-2 pr-3 py-1.5 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors"
               >
-                <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center text-xs font-black">
-                  {user.avatar}
+                <div className="w-6 h-6 bg-primary text-white rounded-lg flex items-center justify-center text-xs font-black overflow-hidden">
+                  {user.avatar_url
+                    ? <img src={user.avatar_url} alt={user.name} className="w-full h-full object-cover" />
+                    : user.name.substring(0, 2).toUpperCase()
+                  }
                 </div>
                 <span className="text-sm font-bold max-w-[80px] truncate">{user.name.split(' ')[0]}</span>
               </button>
